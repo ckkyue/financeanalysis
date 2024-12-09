@@ -92,6 +92,8 @@ def get_csv_date(current_date, before=True):
 
 # Get the fundamentals of a stock and save the data to a .csv file
 def fundamentals_csv(stock, end_date):
+    stock = stock.replace("-", ".")
+
     # Get the csv date
     csv_date = get_csv_date(end_date)
 
@@ -192,6 +194,8 @@ def fundamentals_map(x):
     
 # Get the earning dates of a stock and save the data to a .csv file
 def earning_dates_csv(stock, end_date):
+    stock = stock.replace("-", ".")
+
     # Get the csv date
     csv_date = get_csv_date(end_date)
 
@@ -260,7 +264,7 @@ def earning_dates_csv(stock, end_date):
         return None
 
 # Get the earning dates of a stock
-def get_earning_dates(stock, current_date):
+def get_earning_dates(stock, current_date):    
     # Get the csv date
     csv_date = get_csv_date(current_date)
 
