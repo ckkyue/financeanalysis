@@ -2,8 +2,10 @@
 import ast
 import concurrent.futures
 import datetime as dt
+from functools import partial
 from fundamentals import *
 from helper_functions import get_current_date, generate_end_dates, get_currency, get_df, get_excel_filename, get_infix, get_rs_volume, get_stock_info, slope_reg, stock_market
+import multiprocessing
 import numpy as np
 import pandas as pd
 from pandas import ExcelWriter as EW
@@ -413,10 +415,11 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
             rs_df = rs_df[rs_df["RS"] >= RS]
             stocks = rs_df["Stock"]
 
-        # Fetch the stock data in parallel
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            stock_dfs = {stock: data for stock, data in tqdm(zip(stocks, executor.map(lambda stock: get_df(stock, end_date), stocks)), desc="Fetching stock price data")}
-        stock_infos = {stock: get_stock_info(stock) for stock in tqdm(stocks, desc="Fetching stock info")}
+        # Create a pool of worker processes to fetch the stock price data and information
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            partial_get_df = partial(get_df, end_date=current_date)
+            stock_dfs = {stock: df for stock, df in zip(stocks, list(tqdm(pool.imap(partial_get_df, stocks), total=len(stocks), desc="Fetching stock price data")))}
+            stock_infos = {stock: info for stock, info in zip(stocks, list(tqdm(pool.imap(get_stock_info, stocks), total=len(stocks), desc="Fetching stock info")))}
 
         # Process each stock and create an export list
         export_data = [process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_infos, rs_volume_df, backtest=backtest) for stock in tqdm(stocks)]

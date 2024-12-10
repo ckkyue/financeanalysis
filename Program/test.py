@@ -1,8 +1,10 @@
 # Imports
 import datetime as dt
 from fundamentals import *
+from functools import partial
 from helper_functions import get_current_date, get_df, get_volume5m_data, generate_end_dates, merge_stocks, stock_market
 import matplotlib.pyplot as plt
+import multiprocessing
 import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
@@ -39,7 +41,14 @@ result_folder = "Result"
 
 # Get the stocks of the stock market
 stocks = stock_market(current_date, current_date, index_name, HKEX_all, NASDAQ_all)
-stocks = [stock for stock in stocks if stock > "RBA"]
+stocks = [stock for stock in stocks if stock > "REG"]
 
-for stock in tqdm(stocks):
-    fundamentals_csv(stock, current_date)
+# for stock in stocks:
+#     fundamentals_csv(stock, current_date)
+
+if __name__ == "__main__":
+    # Create a partial function with current_date
+    partial_fundamentals_csv = partial(fundamentals_csv, end_date=current_date)
+    # Create a pool of worker processes
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        results = list(tqdm(pool.imap(partial_fundamentals_csv, stocks), total=len(stocks)))
