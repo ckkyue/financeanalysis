@@ -241,6 +241,9 @@ def main():
         for category, sectors_list in sector_classification.items():
             print(f"{category} sectors: {', '.join(sectors_list)}")
 
+        # Plot the relative rotation graph
+        plot_rrg(sectors, sector_dict, index_df, "sector", save=True)
+
     plot_all_jdk = False
     if plot_all_jdk:
         # Iterate over all sectors
@@ -248,11 +251,8 @@ def main():
             # Plot the JdK RS-Ratio and Momentum of the sector
             plot_JdK(sector, sector_dict, index_df, save=True)
 
-    sector_selected = True
+    sector_selected = False
     if sector_selected:
-        # Plot the relative rotation graph
-        plot_rrg(sectors, sector_dict, index_df, "sector", save=True)
-        
         # Plot the sectors of the selected stocks
         plot_sector_selected(current_date, "^GSPC", index_dict, NASDAQ_all=NASDAQ_all, save=True)
     

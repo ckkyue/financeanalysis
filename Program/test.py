@@ -39,7 +39,7 @@ result_folder = "Result"
 
 # Get the stocks of the stock market
 stocks = stock_market(current_date, current_date, index_name, HKEX_all, NASDAQ_all)
-stocks = [stock for stock in stocks if stock > "MVST"]
+stocks = [stock for stock in stocks if stock > "RBA"]
 
 for stock in tqdm(stocks):
     fundamentals_csv(stock, current_date)
