@@ -34,8 +34,9 @@ def scrape(url, retry=0, **kwargs):
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 429:
             if retry < 10: # Maximum retry attempts set to 10
-                retry_after = np.ceil(float(e.response.headers.get("Retry-After", 20))) # Default to 20 seconds if Retry-After header is missing
+                retry_after = np.ceil(float(e.response.headers.get("Retry-After", 10))) # Default to 10 seconds if Retry-After header is missing
                 time.sleep(retry_after)
+                print(f"Retry after {retry_after} for {url}.")
                 return scrape(url, retry=retry+1, **kwargs) # Retry the scrape after waiting
             else:
                 return f"Maximum number of retry attempts reached."
@@ -372,7 +373,7 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
         recent_earning_date = max(earning_dates)
     else:
         recent_earning_date = current_date
-    
+
     # Read the fundamentals data from .csv file if end date is earlier than recent earning date
     if end_date < recent_earning_date:
         if earning_dates:
@@ -381,6 +382,7 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
             
             # Get the most recent report date
             recent_report_date = max(earning_dates)
+            print(recent_report_date)
 
         # Estimate the recent report date by shifting 3 months backwards from end date
         else:
@@ -469,10 +471,6 @@ def get_lastQ_growths(stock, index_name, end_date, current_date):
 
         # Get the csv date
         csv_date = get_csv_date(current_date)
-
-        # Modify the csv date
-        if recent_report_date > csv_date:
-            csv_date = recent_report_date
         
          # Read the fundamentals data from .csv file       
         df = fundamentals_csv(stock, csv_date)
