@@ -39,3 +39,16 @@ current_date = get_current_date(start, index_name)
 
 # Define the result folder
 result_folder = "Result"
+
+# Define the folder path
+folder_path = "Fundamentals"
+
+# Check if there are pre-existing data
+current_files = [file for file in os.listdir(folder_path) if file.endswith("_fundamentals_2024-12-01.csv")]
+stocks_fund = [file.split("_")[0] for file in current_files]
+
+stocks = stock_market(current_date, current_date, index_name, HKEX_all, NASDAQ_all)
+stocks = [stock for stock in stocks if stock not in stocks_fund]
+
+for stock in tqdm(stocks):
+    fundamentals_csv(stock, current_date)
