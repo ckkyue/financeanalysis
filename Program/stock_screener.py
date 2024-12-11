@@ -418,8 +418,8 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         # Create a pool of worker processes to fetch the stock price data and information
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             partial_get_df = partial(get_df, end_date=current_date)
-            stock_dfs = {stock: df for stock, df in zip(stocks, list(tqdm(pool.imap(partial_get_df, stocks), total=len(stocks), desc="Fetching stock price data")))}
-            stock_infos = {stock: info for stock, info in zip(stocks, list(tqdm(pool.imap(get_stock_info, stocks), total=len(stocks), desc="Fetching stock info")))}
+            stock_dfs = {stock: df for stock, df in zip(stocks, list(tqdm(pool.imap(partial_get_df, stocks, 1), total=len(stocks), desc="Fetching stock price data")))}
+            stock_infos = {stock: info for stock, info in zip(stocks, list(tqdm(pool.imap(get_stock_info, stocks, 1), total=len(stocks), desc="Fetching stock info")))}
 
         # Process each stock and create an export list
         export_data = [process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_infos, rs_volume_df, backtest=backtest) for stock in tqdm(stocks)]
