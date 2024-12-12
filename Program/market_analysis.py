@@ -251,7 +251,7 @@ def main():
             # Plot the JdK RS-Ratio and Momentum of the sector
             plot_JdK(sector, sector_dict, index_df, save=True)
 
-    sector_selected = False
+    sector_selected = True
     if sector_selected:
         # Plot the sectors of the selected stocks
         plot_sector_selected(current_date, "^GSPC", index_dict, NASDAQ_all=NASDAQ_all, save=True)
