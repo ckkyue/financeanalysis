@@ -126,6 +126,75 @@ def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_ext
     # Show the plot
     plt.show()
 
+# Plot the MACD indicator
+def plot_MACD(stock, df, period=252, show=252, save=False):
+    # Add technical indicators to the data
+    add_indicator(df)
+
+    # Calculate the z-score of MACD bar
+    df = calculate_ZScore(df, ["MACD Bar"], period)
+
+    # Filter the data
+    df = df[- show:]
+
+    # Separate the dataframe into green and red MACD bars
+    up_df = df[df["MACD Bar"] > 0]
+    down_df = df[df["MACD Bar"] <= 0]
+    colour_up = "green"
+    colour_down = "red"
+
+    # Create a figure with three subplots, one for the closing price, one for the MACD indicator, and one for the MACD bar z-score
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [3, 1, 1]}, sharex=True)
+
+    # Plot the closing price on the first subplot
+    ax1.plot(df["Close"], label="Close")
+
+    # Set the y label of the first subplot
+    ax1.set_ylabel("Price")
+
+    # Set the x limit of the first subplot
+    buffer = relativedelta(days=1)
+    ax1.set_xlim(df.index[0] - buffer, df.index[-1] + buffer)
+
+    # Plot the MACD indicator on the second subplot
+    ax2.bar(up_df.index, up_df["MACD Bar"], color=colour_up)
+    ax2.bar(down_df.index, down_df["MACD Bar"], color=colour_down)
+    ax2.axhline(y=0, linestyle="dotted", color="black")
+
+    # Set the y label of the second subplot
+    ax2.set_ylabel(f"MACD")
+
+    # Plot the MACD bar z-score on the third subplot
+    ax3.plot(df["MACD Bar Z-Score"], color="orange", alpha=0.7)
+    ax3.axhline(y=2, linestyle="dotted", color="red")
+    ax3.axhline(y=0, linestyle="dotted", color="black")
+    ax3.axhline(y=-2, linestyle="dotted", color="red")
+
+    # Set the y label of the third subplot
+    ax3.set_ylabel(f"MACD Z-Score")
+
+    # Set the x label
+    plt.xlabel("Date")
+    
+    # Set the title
+    plt.suptitle(f"MACD for {stock}")
+
+    # Combine the legends and place them at the top subplot
+    handles, labels = ax1.get_legend_handles_labels()
+    handles += ax2.get_legend_handles_labels()[0]
+    labels += ax2.get_legend_handles_labels()[1]
+    ax1.legend(handles, labels)
+
+    # Adjust the spacing between subplots
+    plt.tight_layout()
+
+    # Save the plot
+    if save:
+        plt.savefig(f"Result/Figure/MACD{stock}.png", dpi=300)
+
+    # Show the plot
+    plt.show()
+
 # Plot the MFI/RSI indicator
 def plot_MFI_RSI(stock, df, period=252, show=252, save=False):
     # Add technical indicators to the data
@@ -137,7 +206,7 @@ def plot_MFI_RSI(stock, df, period=252, show=252, save=False):
     # Filter the data
     df = df[- show:]
 
-    # Create a figure with three subplots, one for the closing price, one for the MFI/RSI indicator, and one for the MFI/RSI Z-Score
+    # Create a figure with three subplots, one for the closing price, one for the MFI/RSI indicator, and one for the MFI/RSI z-score
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [3, 1, 1]}, sharex=True)
 
     # Plot the closing price on the first subplot
@@ -159,9 +228,9 @@ def plot_MFI_RSI(stock, df, period=252, show=252, save=False):
     # Set the y label of the second subplot
     ax2.set_ylabel(f"MFI/RSI")
 
-    # Plot the MFI/RSI Z-Score on the third subplot
-    ax3.plot(df["MFI Z-Score"], label="MFI Z-Score", color="orange", alpha=0.7)
-    ax3.plot(df["RSI Z-Score"], label="RSI Z-Score", color="green", alpha=0.7)
+    # Plot the MFI/RSI z-score on the third subplot
+    ax3.plot(df["MFI Z-Score"], color="orange", alpha=0.7)
+    ax3.plot(df["RSI Z-Score"], color="green", alpha=0.7)
     ax3.axhline(y=2, linestyle="dotted", color="red")
     ax3.axhline(y=0, linestyle="dotted", color="black")
     ax3.axhline(y=-2, linestyle="dotted", color="red")
@@ -196,13 +265,13 @@ def plot_ADX(stock, df, period=252, show=252, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
-    # Calculate the z-scores of ADX
+    # Calculate the Z-score of ADX
     df = calculate_ZScore(df, "ADX", period)
 
     # Filter the data
     df = df[- show:]
 
-    # Create a figure with three subplots, one for the closing price, one for the ADX indicator, and one for the ADX Z-Score
+    # Create a figure with three subplots, one for the closing price, one for the ADX indicator, and one for the ADX z-score
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [3, 1, 1]}, sharex=True)
 
     # Plot the closing price on the first subplot
@@ -220,7 +289,7 @@ def plot_ADX(stock, df, period=252, show=252, save=False):
     # Set the y label of the second subplot
     ax2.set_ylabel(f"ADX")
 
-    # Plot the ADX Z-Score on the third subplot
+    # Plot the ADX z-score on the third subplot
     ax3.plot(df["ADX Z-Score"], label="ADX Z-Score", color="orange")
     ax3.axhline(y=2, linestyle="dotted", color="red")
     ax3.axhline(y=0, linestyle="dotted", color="black")
@@ -814,7 +883,7 @@ def plot_compare_longshortRS(index_df, index_name, rs_slopes, r_squareds, end_da
     # Filter the dataframe
     index_df = index_df.loc[(index_df.index >= end_dates[0]) & (index_df.index <= end_dates[-1])]
 
-    # Create a figure with four subplots, one for the closing price, one for the RS slope, one for the R^2 values, and one for the Z-Score of product
+    # Create a figure with four subplots, one for the closing price, one for the RS slope, one for the R^2 values, and one for the z-Score of product
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [3, 0.5, 0.5, 1]}, sharex=True)
 
     # Plot the closing price on the first subplot

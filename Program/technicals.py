@@ -249,7 +249,10 @@ def MACD(data, period_long, period_short, period_signal, column="Close"):
     data["MACD"] = EMA_short - EMA_long
 
     # Calculate the signal line
-    data["Signal Line"] = EMA(data, period_signal, column="MACD")
+    data["MACD Signal Line"] = EMA(data, period_signal, column="MACD")
+
+    # Calculate the MACD bar
+    data["MACD Bar"] = data["MACD"] - data["MACD Signal Line"]
     
     return data
 
