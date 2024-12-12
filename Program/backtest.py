@@ -24,7 +24,7 @@ def stocks_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Define the filename for stock_dict
-    stock_dict_filename = f"Result/Stock dict/{infix}stock_dict{factors}.txt"
+    stock_dict_filename = f"Backtest/Stock dict/{infix}stock_dict{factors}.txt"
     
     # Open the file if it exists
     if os.path.isfile(stock_dict_filename):
@@ -167,7 +167,7 @@ def create_index_df_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     index_df_dict = {}
 
     # Define the filename of index_df_dict
-    index_df_dict_filename = f"Result/{infix}index_df_dicttop{top}.pkl"
+    index_df_dict_filename = f"Backtest/{infix}index_df_dicttop{top}.pkl"
 
     # Iterate over all factors
     for factors in tqdm(factors_group):
@@ -190,7 +190,7 @@ def plot_stocks_equity_curve(index_name, index_dict, NASDAQ_all, factors, factor
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Define the filename of index_df_dict
-    index_df_dict_filename = f"Result/{infix}index_df_dicttop{top}.pkl"
+    index_df_dict_filename = f"Backtest/{infix}index_df_dicttop{top}.pkl"
 
     # Open the file if it exists
     if os.path.isfile(index_df_dict_filename):
@@ -373,7 +373,7 @@ def save_stats(index_name, index_dict, NASDAQ_all, factors_group, top, reanalyse
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Check if there are pre-existing data
-    filename = f"Result/{infix}factors_statstop{top}.npy"
+    filename = f"Backtest/{infix}factors_statstop{top}.npy"
 
     # Save the data to a file if pre-existing data do not exist or reanalyse is true
     if not os.path.isfile(filename) or reanalyse:
@@ -381,7 +381,7 @@ def save_stats(index_name, index_dict, NASDAQ_all, factors_group, top, reanalyse
         factors_stats = np.empty((len(factors_group), 2), dtype=object)
 
         # Define the filename for index_df_dict
-        index_df_dict_filename = f"Result/{infix}index_df_dicttop{top}.pkl"
+        index_df_dict_filename = f"Backtest/{infix}index_df_dicttop{top}.pkl"
 
         # Read the file
         with open(index_df_dict_filename, "rb") as file:
@@ -760,7 +760,7 @@ def main():
     start = dt.datetime.now()
 
     # Define the paths for the folders
-    folders = ["Result/Figure", "Result/Stock dict"]
+    folders = ["Backtest/Stock dict"]
 
     # Check if the folders exist, create them if they do not
     for folder in folders:
@@ -807,7 +807,7 @@ def main():
     save_stats(index_name, index_dict, NASDAQ_all, factors_group, top, reanalyse=True)
 
     # Load the statistics of all factors
-    factors_stats = np.load(f"Result/{infix}factors_statstop{top}.npy", allow_pickle=True)
+    factors_stats = np.load(f"Backtest/{infix}factors_statstop{top}.npy", allow_pickle=True)
 
     # Get the price data of the index
     index_df = get_df(index_name, current_date)

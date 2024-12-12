@@ -374,7 +374,10 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Define the result folder
-    result_folder = "Result"
+    if backtest:
+        result_folder = "Backtest"
+    else:
+        result_folder = "Result"
 
     # Iterate over all end dates
     for end_date in end_dates.copy():
@@ -456,15 +459,21 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         writer._save()
 
 # Create the stock dictionary
-def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, top=10, RS=90, period=252):
+def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, top=10, RS=90, period=252, backtest=False):
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Initialize stock_dict
     stock_dict = {}
 
+    # Define the result folder
+    if backtest:
+        result_folder = "Backtest"
+    else:
+        result_folder = "Result"
+
     # Check if stock_dict exists
-    stock_dict_filename = f"Result/Stock dict/{infix}stock_dict{factors}.txt"
+    stock_dict_filename = os.path.join(result_folder, f"Stock dict/{infix}stock_dict{factors}.txt")
     if os.path.isfile(stock_dict_filename):
         with open(stock_dict_filename, "r") as file:
             # Retrieve the content of the stock_dict as a dictionary
@@ -474,7 +483,7 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
     for end_date in end_dates[:-1]:
         # Format the end date
         end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
-        filename = f"Result/{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx"
+        filename = os.path.join(result_folder, f"{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
 
         # Read the data of the screened stocks
         df = pd.read_excel(filename)
@@ -508,7 +517,7 @@ def main():
     print(start, "\n")
 
     # Define the paths for the folders
-    folders = ["Price data"]
+    folders = ["Price data", "Result", "Result/Figure", "Backtest"]
     
     # Check if the folders exist, create them if they do not
     for folder in folders:
