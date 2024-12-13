@@ -1033,17 +1033,19 @@ def plot_volume5m(stock, volume5m_data, date, period=50, save=False):
     # Show the plot
     plt.show()
 
-# Plot the n days return
-def plot_ndays_return(stock, df, n, infix="", save=False):
+# Plot the n days dist
+def plot_ndays_dist(df, column, title, xlabel, figure_name=None, save=False):
+    # Define the result folder
+    result_folder = "Result/Figure"
+
     # Extract the array
-    arr = df[f"{n} Days Return (%)"]
+    arr = df[column]
 
     # Create a figure
     plt.figure(figsize=(10, 6))
 
     # Plot histogram with counts
     counts, bins, _ = plt.hist(arr, bins=100, color="blue", edgecolor="black", alpha=0.7)
-
 
     # Fit Gaussian curve
     mean = np.mean(arr)
@@ -1083,12 +1085,8 @@ def plot_ndays_return(stock, df, n, infix="", save=False):
              bbox={'facecolor': 'white', 'alpha': 0.8, 'pad': 5})
 
     # Set title and labels
-    if n == 1:
-        plt.title(f"Daily Percent Change of {stock}")
-        plt.xlabel("Distribution of Daily Percent Change (%)")
-    else:
-        plt.title(f"Distribution of {n} Days Return of {stock}")
-        plt.xlabel(f"{n} Days Return (%)")
+    plt.title(f"{title}")
+    plt.xlabel(f"{xlabel}")
     plt.ylabel("Count")
 
     # Set y-ticks to only show integers
@@ -1099,7 +1097,7 @@ def plot_ndays_return(stock, df, n, infix="", save=False):
 
     # Save the plot
     if save:
-        plt.savefig(f"Result/Figure/{n}daysreturn{infix}{stock}.png", dpi=300)
+        plt.savefig(os.path.join(result_folder, figure_name), dpi=300)
 
     # Show the plot
     plt.show()
