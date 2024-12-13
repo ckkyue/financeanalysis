@@ -231,7 +231,6 @@ def ATR(data, period=14, column="Close"):
     
     # Calculate the ATR by EMA of TR
     ATR = TR.ewm(span=period, adjust=False).mean()
-    data["Range"] = data["High"] - data["Low"]
     data["TR"] = TR
     data["ATR"] = ATR
 

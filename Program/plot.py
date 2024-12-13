@@ -325,23 +325,22 @@ def plot_volatility(stock, df, period=252, show=120, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
-    # Calculate the range SMA 14 ratio
-    df["Range SMA 14"] = SMA(df, 14, column="Range")
-    df["Range/SMA14"] = df["Range"] / df["Range SMA 14"]
+    # Calculate the TR/ATR ratio
+    df["TR/ATR"] = df["TR"] / df["ATR"]
 
     # Calculate the volume SMA 50 ratio
     df["Vol/SMA50"] = df["Volume"] / df["Volume SMA 50"]
 
-    # Calculate the product of range SMA 14 ratio and volume SMA 50 ratio
-    df["Range/SMA14 * Vol/SMA50"] = df["Range/SMA14"] * df["Vol/SMA50"]
+    # Calculate the product of TR/ATR ratio and volume SMA 50 ratio
+    df["TR/ATR * Vol/SMA50"] = df["TR/ATR"] * df["Vol/SMA50"]
 
-    # Calculate the z-scores of range SMA 14 ratio, volume SMA 50 ratio and their product
-    df = calculate_ZScore(df, ["Range/SMA14", "Vol/SMA50", "Range/SMA14 * Vol/SMA50"], period)
+    # Calculate the z-scores of TR/ATR ratio, volume SMA 50 ratio and their product
+    df = calculate_ZScore(df, ["TR/ATR", "Vol/SMA50", "TR/ATR * Vol/SMA50"], period)
 
     # Filter the data
     df = df[- show:]
 
-    # Create a figure with four subplots, one for the price, one for the range z-score, one for the volume SMA 50 ratio z-score, and one for the combined z-score
+    # Create a figure with four subplots, one for the price, one for the TR/ATR z-score, one for the volume SMA 50 ratio z-score, and one for the combined z-score
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [1, 1, 1, 1]}, sharex=True)
 
     # Plot the closing price on the first subplot
@@ -353,14 +352,14 @@ def plot_volatility(stock, df, period=252, show=120, save=False):
     # Set the x limit of the first subplot
     ax1.set_xlim(df.index[0], df.index[-1])
 
-    # Plot the range SMA 14 ratio z-score on the second subplot
-    ax2.plot(df["Range/SMA14 Z-Score"])
+    # Plot the TR/ATR ratio z-score on the second subplot
+    ax2.plot(df["TR/ATR Z-Score"])
     ax2.axhline(y=2, linestyle="dotted", label="Expansion", color="red")
     ax2.axhline(y=0, linestyle="dotted", color="black")
     ax2.axhline(y=-2, linestyle="dotted", label="Contraction", color="green")
 
     # Set the y label of the second subplot
-    ax2.set_ylabel("Range/SMA14 Z-Score")
+    ax2.set_ylabel("TR/ATR Z-Score")
 
     # Plot the volume SMA 50 ratio z-score on the third subplot
     ax3.plot(df["Vol/SMA50 Z-Score"])
@@ -371,8 +370,8 @@ def plot_volatility(stock, df, period=252, show=120, save=False):
     # Set the y label of the third subplot
     ax3.set_ylabel("Vol/SMA50 Z-Score")
 
-    # Plot the z-score of the product of range SMA 14 ratio and volume SMA 50 ratio
-    ax4.plot(df["Range/SMA14 * Vol/SMA50 Z-Score"])
+    # Plot the z-score of the product of TR/ATR ratio and volume SMA 50 ratio
+    ax4.plot(df["TR/ATR * Vol/SMA50 Z-Score"])
     ax4.axhline(y=2, linestyle="dotted", label="Expansion", color="red")
     ax4.axhline(y=0, linestyle="dotted", color="black")
     ax4.axhline(y=-2, linestyle="dotted", label="Contraction", color="green")
