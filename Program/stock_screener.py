@@ -526,7 +526,7 @@ def main():
     
     # Variables
     HKEX_all = True
-    NASDAQ_all = True
+    NASDAQ_all = False
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks
     RS = 90
