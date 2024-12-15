@@ -224,7 +224,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                     EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = get_fundamentals(stock, end_date, current_date)
 
                 if index_name == "^HSI":
-                    conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_nextY_growth, earnings_thisQ_growth, ROE)
+                    conds_fund = True
                 else:
                     conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_thisY_growth, EPS_QoQ_growth, ROE)
                 
