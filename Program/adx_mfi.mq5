@@ -2,7 +2,7 @@
 // © kelvinyue37
 
 //@version=6
-indicator(title = 'ADX and MFI', shorttitle = 'ADX, MFI', overlay = false)
+indicator(title = 'ADX & MFI', shorttitle = 'ADX, MFI', overlay = false)
 
 // Inputs
 // Periods
