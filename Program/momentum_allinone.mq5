@@ -2,7 +2,7 @@
 // © kelvinyue37
 
 //@version=6
-indicator(title = 'Momentum All-in-One', shorttitle = 'MA, MVP, VCP, Earnings', overlay = true)
+indicator(title = 'Momentum All-in-One', shorttitle = 'MA MVP VCP Earnings', overlay = true)
 
 // Inputs
 // MA length and type

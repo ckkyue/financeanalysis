@@ -2,7 +2,7 @@
 // © kelvinyue37
 
 //@version=6
-indicator(title = 'ADX & MFI', shorttitle = 'ADX, MFI', overlay = false)
+indicator(title = 'ADX & MFI', shorttitle = 'ADX MFI', overlay = false)
 
 // Inputs
 // Periods
@@ -48,4 +48,5 @@ mfi = 100 - (100 / (1 + mfRatio))
 // Plot the MFI
 plot(mfi, title = 'MFI', color=color.blue)
 hline(80, title = 'Overbought', color=color.red)
+hline(50, color=color.black)
 hline(20, title = 'Oversold', color=color.red)
