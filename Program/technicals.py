@@ -344,16 +344,16 @@ def ADX(data, period=14):
     # Calculate the ATR
     data_copy = ATR(data_copy, period=period)
 
-    # Calculate +DM and -DM
+    # Calculate the +DM and -DM
     data_copy["+DM"] = np.where((data_copy["High"] - data_copy["High"].shift()) > np.maximum((data_copy["Low"].shift() - data_copy["Low"]), 0), 
                                 data_copy["High"] - data_copy["High"].shift(), 0)
     
     data_copy["-DM"] = np.where((data_copy["Low"].shift() - data_copy["Low"]) > np.maximum((data_copy["High"] - data_copy["High"].shift()), 0), 
                                 data_copy["Low"].shift() - data_copy["Low"], 0)
 
-    # Calculate the +DI and -DI by EMA of +DM and -DM
-    data_copy["+DI"] = EMA(data_copy, period, column="+DM")
-    data_copy["-DI"] = EMA(data_copy, period, column="-DM")
+    # Calculate the +DI and -DI by EMA of +DM and -DM, divided by ATR
+    data_copy["+DI"] = EMA(data_copy, period, column="+DM") / data_copy["ATR"]
+    data_copy["-DI"] = EMA(data_copy, period, column="-DM") / data_copy["ATR"]
 
     # Calculate the DX
     data_copy["DX"] = (np.abs(data_copy["+DI"] - data_copy["-DI"]) / (data_copy["+DI"] + data_copy["-DI"])) * 100
