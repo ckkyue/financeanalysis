@@ -108,7 +108,7 @@ i_NegArrowColor = input(color.red, title = '-ve', inline = '3', group = 'Arrows'
 // Table settings
 i_TableSize = input.string('Normal', title = 'Table Size', options = ['Tiny', 'Small', 'Normal', 'Large'], group = 'Table', inline = '1')
 i_MarketSu = input.bool(true, title = 'MarketSurge Look', group = 'Table', inline = '1')
-i_PosTable = input.string(defval = position.bottom_left, title = 'Table Position', options = [position.top_left, position.top_center, position.top_right, position.middle_left, position.middle_center, position.middle_right, position.bottom_left, position.bottom_center, position.bottom_right], group = 'Table', inline = '2')
+i_PosTable = input.string(defval = 'Bottom Left', title = 'Table Position', options = ['Top Left', 'Top Centre', 'Top Right', 'Middle Left', 'Middle Centre', 'Middle Right', 'Bottom Left', 'Bottom Centre', 'Bottom Right'], group = 'Table', inline = '2')
 i_FrameWidth = input.int(1, title = 'Frame Width', group = 'Table', options = [0, 1, 2, 3, 4, 5], inline = '3')
 i_FrameColor = input(color.black, title = 'Color', group = 'Table', inline = '3')
 i_TableBorder = input(true, title = 'Table Border', group = 'Table', inline = '4')
@@ -147,6 +147,18 @@ tableSize = switch i_TableSize
     'Small' => size.small
     'Large' => size.large
 
+// Switch table position
+posTable = switch i_PosTable
+    'Top Left' => position.top_left
+    'Top Centre' => position.top_center
+    'Top Right' => position.top_right
+    'Middle Left' => position.middle_left
+    'Middle Centre' => position.middle_center
+    'Middle Right' => position.middle_right
+    'Bottom Left' => position.bottom_left
+    'Bottom Centre' => position.bottom_center
+    'Bottom Right' => position.bottom_right
+
 // MarketSurge Look
 if i_MarketSu
     i_FrameColor := color.black
@@ -156,7 +168,7 @@ if i_MarketSu
     i_ResultBackgroundColorEven
 
 // Declare table
-var table epsTable = table.new(i_PosTable, 15, 15, frame_color = i_FrameColor, frame_width = i_FrameWidth, border_width = i_TableBorder ? 1 : 0, border_color = i_BorderColor)
+var table epsTable = table.new(posTable, 15, 15, frame_color = i_FrameColor, frame_width = i_FrameWidth, border_width = i_TableBorder ? 1 : 0, border_color = i_BorderColor)
 
 // Current earnings per share (EPS)
 EPS = request.earnings(syminfo.tickerid, earnings.actual, ignore_invalid_symbol = true, lookahead = barmerge.lookahead_on)
@@ -736,7 +748,7 @@ if bool(rev)
 
 // Function used to master the fill of cells
 condRepeatSameValueAtLastLine = actualEPS == actualEPS1 and standardEPS == standardEPS1 and EPS_Estimate == EPS_Estimate[1]
-if barstate.islast
+if barstate.islast and i_MarketSu
     // EPS Display
     if i_Compare == true
         if i_Estimates
