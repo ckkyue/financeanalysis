@@ -265,15 +265,20 @@ def earning_dates_csv(stock, end_date):
         return None
 
 # Get the earning dates of a stock
-def get_earning_dates(stock, current_date):    
-    # Get the csv date
-    csv_date = get_csv_date(current_date)
+def get_earning_dates(stock, current_date):   
+    try: 
+        # Get the csv date
+        csv_date = get_csv_date(current_date)
 
-    # Get the dataframe
-    df = earning_dates_csv(stock, csv_date)
+        # Get the dataframe
+        df = earning_dates_csv(stock, csv_date)
 
-    # Get the list of announcement dates and reverse the order
-    earning_dates = df["Announcement Date"].tolist()[::-1]
+        # Get the list of announcement dates and reverse the order
+        earning_dates = df["Announcement Date"].tolist()[::-1]
+
+    except Exception as e:
+        print(f"Error for {stock}: {e}.")
+        earning_dates = []
 
     try:
         # Get the future earning dates
@@ -430,7 +435,7 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
             ROE = round(df.loc[closest_date, "roe"], 2)
 
         else:
-            EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = "N/A", "N/A", "N/A", "N/A"
+            EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = None, None, None, None
 
     # Scrape the fundamentals data from Finviz if end date is later than recent earning date
     else:

@@ -211,7 +211,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                 fEPS = stock_info.get("forwardEps", "N/A")
 
                 # Estimate the EPS growth of next year
-                EPS_nextY_growth = round((fEPS - tEPS) / np.abs(tEPS) * 100, 2) if tEPS != "N/A" else "N/A"
+                EPS_nextY_growth = round((fEPS - tEPS) / np.abs(tEPS) * 100, 2) if tEPS != "N/A" else None
                 
                 if index_name == "^HSI":
                     # Get the earnings growth of the most recent quarters
@@ -224,7 +224,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                     EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = get_fundamentals(stock, end_date, current_date)
 
                 if index_name == "^HSI":
-                    conds_fund = True
+                    conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_nextY_growth, earnings_thisQ_growth, ROE)
                 else:
                     conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_thisY_growth, EPS_QoQ_growth, ROE)
                 
@@ -288,13 +288,13 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                         "52 Week Low": Low,
                         "52 Week High": High,
                         f"Market Cap (B, {currency})": market_cap,
-                        "EPS past 5Y (%)": EPS_past5Y_growth if index_name != "^HSI" else "N/A",
-                        "EPS this Y (%)": EPS_thisY_growth if index_name != "^HSI" else "N/A",
-                        "EPS Q/Q (%)": EPS_QoQ_growth if index_name != "^HSI" else "N/A",
+                        "EPS past 5Y (%)": EPS_past5Y_growth if index_name != "^HSI" else None,
+                        "EPS this Y (%)": EPS_thisY_growth if index_name != "^HSI" else None,
+                        "EPS Q/Q (%)": EPS_QoQ_growth if index_name != "^HSI" else None,
                         "ROE (%)": ROE,
-                        "EPS this Q (%)": EPS_thisQ_growth if index_name != "^HSI" else "N/A",
-                        "EPS last 1Q (%)": EPS_last1Q_growth if index_name != "^HSI" else "N/A",
-                        "EPS last 2Q (%)": EPS_last2Q_growth if index_name != "^HSI" else "N/A",
+                        "EPS this Q (%)": EPS_thisQ_growth if index_name != "^HSI" else None,
+                        "EPS last 1Q (%)": EPS_last1Q_growth if index_name != "^HSI" else None,
+                        "EPS last 2Q (%)": EPS_last2Q_growth if index_name != "^HSI" else None,
                         "Next Earning Date": next_earning_date,
                         "Sector": sector,
                         "Industry": industry,
@@ -367,6 +367,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
     # Select period based on HK/US
     if index_name == "^HSI":
         period = period_hk
+        RS = RS - 10
     else:
         period = period_us
 
@@ -412,8 +413,16 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         
         # Filter the stocks
         if index_name == "^HSI":
-            volume_df = volume_df[(volume_df["Volume SMA 5 Rank"] <= 200) | (volume_df["Volume SMA 20 Rank"] <= 200)]
-            stocks = volume_df["Stock"]
+            rs_df = rs_df[rs_df["RS"] >= RS]
+            volume_df = volume_df[(volume_df["Volume SMA 5 Rank"] <= 800) | (volume_df["Volume SMA 20 Rank"] <= 800)]
+
+            # Get the list of stocks from each dataframe
+            rs_stocks = set(rs_df["Stock"])
+            volume_stocks = set(volume_df["Stock"])
+            
+            # Find the intersection
+            stocks = list(rs_stocks.intersection(volume_stocks))
+
         else:
             rs_df = rs_df[rs_df["RS"] >= RS]
             stocks = rs_df["Stock"]
@@ -534,7 +543,7 @@ def main():
     backtest = False
 
     # Index
-    index_name = "^GSPC"
+    index_name = "^HSI"
     index_dict = {"^HSI": "HKEX", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
     # Get the current date
