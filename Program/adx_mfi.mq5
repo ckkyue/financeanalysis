@@ -64,13 +64,13 @@ mfiZScore = na(mfiStdDev) ? na : (mfi - mfiMean) / mfiStdDev
 // Display the most recent z-scores as labels on the plot
 if bar_index == last_bar_index
     // Determine y-coordinates based on the condition
-    adxY = adx < mfi ? 30 : 60
-    mfiY = adx < mfi ? 60 : 30
+    adxY = adx < mfi ? 25 : 55
+    mfiY = adx < mfi ? 55 : 25
 
     // Add "#" only if using fewer data points
-    adxLabelText = bar_index < zScorePeriod ? "#" + str.tostring(adxZScore, "#.##") + "σ" : str.tostring(adxZScore, "#.##") + "σ"
-    mfiLabelText = bar_index < zScorePeriod ? "#" + str.tostring(mfiZScore, "#.##") + "σ" : str.tostring(mfiZScore, "#.##") + "σ"
+    adxLabelText = bar_index < zScorePeriod ? "#" + "ADX: " + str.tostring(adxZScore, "#.##") + "σ" : "ADX: " + str.tostring(adxZScore, "#.##") + "σ"
+    mfiLabelText = bar_index < zScorePeriod ? "#" + "MFI: " + str.tostring(mfiZScore, "#.##") + "σ" : "MFI: " + str.tostring(mfiZScore, "#.##") + "σ"
 
     // Create labels
-    label.new(bar_index + 7, adxY, text = adxLabelText, color=color.orange, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
-    label.new(bar_index + 7, mfiY, text = mfiLabelText, color=color.blue, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
+    label.new(bar_index + 8, adxY, text = adxLabelText, color=color.orange, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
+    label.new(bar_index + 8, mfiY, text = mfiLabelText, color=color.blue, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
