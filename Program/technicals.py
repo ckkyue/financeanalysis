@@ -520,7 +520,7 @@ def add_indicator(data):
     FTD_DD(data)
 
     # Calculate the moving averages of closing prices and volumes
-    periods = [5, 20, 50, 200]
+    periods = [5, 10, 20, 50, 100, 200]
     for i in periods:
         data[f"SMA {str(i)}"] = SMA(data, i)
         data[f"EMA {str(i)}"] = EMA(data, i)
