@@ -4,6 +4,7 @@
 //@version=6
 indicator(title='Momentum All-in-One', shorttitle='MA MVP VCP ADX MFI', overlay=false)
 
+
 // Input parameters
 // Moving Averages settings
 ma1Length = input.int(title='MA 1 Length', defval=5, minval=1, group='Moving Averages')
@@ -126,8 +127,7 @@ adx = ta.ema(dx, adxPeriod)
 // Plot the ADX
 plot(adx, title='ADX', color=color.orange)
 
-// Calculate HLC3, raw MF, and change of HLC3
-hlc3 = (high + low + close) / 3
+// Calculate raw MF, and change of HLC3
 rawMF = hlc3 * volume
 hlc3Change = hlc3 - hlc3[1]
 

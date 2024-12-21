@@ -12,7 +12,7 @@ graphSales = input(false, title = 'Sales', inline = '1', group = 'Graph')
 
 // Graph settings
 inputGraphArrowSize = input.string('Small', title = 'Arrow Size', options = ['Tiny', 'Small', 'Normal', 'Large'], inline = '2', group = 'Graph')
-graphArrowColor = input(color.black, title = 'Arrow Color', inline = '3', group = 'Graph')
+graphArrowColor = input(color.black, title = 'Arrow Colour', inline = '3', group = 'Graph')
 graphPosColor = input(color.blue, title = '+ve', inline = '3', group = 'Graph')
 graphNegColor = input(color.red, title = '-ve', inline = '3', group = 'Graph')
 
@@ -25,11 +25,11 @@ tableComp = input(false, title = 'Compare with YoY', group = 'Table', inline = '
 tableYoY = input(true, title = 'YoY', group = 'Table', inline = '3')
 tableQoQ = input(false, title = 'QoQ', group = 'Table', inline = '3')
 tableSurp = input(false, title = 'Surprise (%)', group = 'Table', inline = '4')
-posSurpColor = input(color.teal, title = '+ve', group = 'Table', inline = '4')
+posSurpColor = input(color.blue, title = '+ve', group = 'Table', inline = '4')
 negSurpColor = input(color.red, title = '-ve', group = 'Table', inline = '4')
 tableGM = input(false, title = 'Gross Margin (GM)', group = 'Table', inline = '5')
 tableROE = input(false, title = 'Return On Equity (ROE)', group = 'Table', inline = '5')
-tableTextColor = input(color.black, title = 'Text Color', group = 'Table', inline = '6')
+tableTextColor = input(color.black, title = 'Text Colour', group = 'Table', inline = '6')
 tablePosColor = input(color.blue, title = '+ve', group = 'Table', inline = '6')
 tableNegColor = input(color.red, title = '-ve', group = 'Table', inline = '6')
 
@@ -37,13 +37,13 @@ tableNegColor = input(color.red, title = '-ve', group = 'Table', inline = '6')
 inputTableSize = input.string('Normal', title = 'Size', options = ['Tiny', 'Small', 'Normal', 'Large'], group = 'Table', inline = '7')
 inputTablePos = input.string(defval = 'Bottom Left', title = 'Position', options = ['Top Left', 'Top Centre', 'Top Right', 'Middle Left', 'Middle Centre', 'Middle Right', 'Bottom Left', 'Bottom Centre', 'Bottom Right'], group = 'Table', inline = '7')
 frameWidth = input.int(1, title = 'Frame Width', group = 'Table', options = [0, 1, 2, 3, 4, 5], inline = '9')
-frameColor = input(color.black, title = 'Frame Color', group = 'Table', inline = '9')
+frameColor = input(color.black, title = 'Frame Colour', group = 'Table', inline = '9')
 tableBorder = input(true, title = 'Border', group = 'Table', inline = '10')
-borderColor = input(color.black, title = ' | Color', group = 'Table', inline = '10')
+borderColor = input(color.black, title = ' | Colour', group = 'Table', inline = '10')
 bgColorOdd = input(color.rgb(231, 231, 231), title = 'Odd Rows', group = 'Table', inline = '11')
 bgColorEven = input(color.white, title = 'Even Rows', group = 'Table', inline = '11')
 
-// No input
+// Define the size of the data
 datasize = 10
 
 // Convert input to graph arrow size
@@ -90,9 +90,6 @@ repGM = tableGM ? request.financial(syminfo.tickerid, 'GROSS_MARGIN', 'FQ', igno
 
 // Request ROE data
 repROE = tableROE ? request.financial(syminfo.tickerid, 'RETURN_ON_EQUITY', 'FQ', ignore_invalid_symbol = true) : na
-
-// Request total revenue for date
-rev = request.financial(syminfo.tickerid, 'TOTAL_REVENUE', 'FQ', barmerge.gaps_on, ignore_invalid_symbol = true)
 
 // Get future earnings estimates from TradingView
 timeF = earnings.future_time
@@ -143,7 +140,7 @@ eps11 = ta.valuewhen(epsTime, repEPS, 11)
 if na(eps11) and eps10 != eps0
     eps11 := eps0
 
-// Fill missing EPS with standardized EPS
+// Fill missing EPS with standardised EPS
 standardEPS0 = ta.valuewhen(epsTime, repEPSStandard, 0)
 standardEPS1 = ta.valuewhen(epsTime, repEPSStandard, 1)
 if na(actualEPS0)
@@ -261,7 +258,7 @@ salesGrowth7 = ta.valuewhen(epsTime, repSalesGrowth, 7)
 if na(salesGrowth7) and salesGrowth6 != salesGrowth0
     salesGrowth7 := salesGrowth0
 
-// Check if the sales change has been actualized
+// Check if the sales change has been actualised
 if actualSalesGrowth0 == salesGrowth1 and not(na(sales4) or sales4 == 0)
     actualSalesGrowth0 := (sales0 - sales4) / math.abs(sales4) * 100
 
@@ -297,12 +294,6 @@ salesEst7 = ta.valuewhen(epsTime, repSalesEst, 7)
 // Detect same sales for TradingView bug correction
 bool sameSales = repSales == sales1 and repSalesGrowth == salesGrowth1
 bool recentEarn = ta.barssince(epsTime) <= 6
-
-// Function to define previous quarters' GM and ROE
-f_repGM(i) =>
-    request.security(syminfo.tickerid, '3M', repGM[i])
-f_roe(i) =>
-    request.security(syminfo.tickerid, '3M', repROE[i])
 
 // Retrieve the first GM value at the start of the data series
 gm0 = ta.valuewhen(bar_index == 0, repGM, 0)
@@ -434,149 +425,116 @@ salesFmt9 = fmtSales(sales9)
 salesFmt10 = fmtSales(sales10)
 salesFmt11 = fmtSales(sales11)
 
-// Function to fill a table cell with formatted value
+// Function to fill a table cell with a formatted value
 fillCell(_table, _column, _row, _value, _decimalFormat) =>
+    // Convert the value to a string with the specified decimal format
     _cellText = str.tostring(_value, _decimalFormat)
+    
+    // Handle NaN values by displaying 'N/A'
     if _cellText == 'NaN'
         _cellText := 'N/A'
+    
+    // Determine the background color based on the row index (odd/even)
     myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
+    
+    // Fill the specified cell in the table with the formatted text and color
     table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = tableTextColor, text_size = tableSize)
 
-// Function to fill a table cell with sales comparison values
-fillCellSales(_table, _column, _row, _value, _value1) =>
+// Function to fill a table cell with EPS or sales comparison values
+fillCellComp(_table, _column, _row, _value1, _value2, _decimalFormat) =>
+    // Set default color for positive values
     _c_color = tablePosColor
-    _transp = 0
-    _cellText1 = str.tostring(_value, '0.0')
-    _cellText2 = str.tostring(_value1, '0.0')
+    
+    // Convert both values to strings with the specified decimal format
+    _cellText1 = str.tostring(_value1, _decimalFormat)
+    _cellText2 = str.tostring(_value2, _decimalFormat)
+    
+    // Handle NaN values by displaying 'N/A'
     if _cellText1 == 'NaN'
         _cellText1 := 'N/A'
     if _cellText2 == 'NaN'
         _cellText2 := 'N/A'
+    
+    // Create a comparison string
     _cellText = _cellText1 + ' vs ' + _cellText2
+    
+    // Determine the background color based on the row index (odd/even)
     myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
+    
+    // Fill the specified cell in the table with the comparison text and color
     table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = tableTextColor, text_size = tableSize)
 
-// Function to fill a table cell with EPS comparison values
-fillCellEPS(_table, _column, _row, _value, _value1) =>
-    _c_color = tablePosColor
-    _transp = 0
-    _cellText1 = str.tostring(_value, '0.00')
-    _cellText2 = str.tostring(_value1, '0.00')
-    if _cellText1 == 'NaN'
-        _cellText1 := 'N/A'
-    if _cellText2 == 'NaN'
-        _cellText2 := 'N/A'
-    _cellText = _cellText1 + ' vs ' + _cellText2
-    myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
-    table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = tableTextColor, text_size = tableSize)
-
-fillCellComp(_table, _column, _row, _value) =>
-    _c_color = _value >= 0 ? tablePosColor : tableNegColor
-    _transp = 0
+// Function to fill a table cell with change values
+fillCellChg(_table, _column, _row, _value, _isSurp) =>
+    // Determine color based on whether it's a surprise and the value
+    _c_color = _isSurp ? (_value >= 0 ? posSurpColor : negSurpColor) : (_value >= 0 ? tablePosColor : tableNegColor)
+    
+    // Initialise the text for the cell based on the value
     _cellText = _value > 999 ? '+999%' : _value < -999 ? '-999%' : _value > 0 ? '+' + str.tostring(_value, '0') + '%' : str.tostring(_value, '0') + '%'
+    
+    // Handle specific cases for NaN and zero values
     if _cellText == 'NaN%'
         _cellText := 'N/A'
-        _cellText
     if _cellText == '+0%'
         _cellText := '0%'
-        _cellText
-    if _value == epsChangeHashF
+    
+    // Handle special cases for specific EPS change values
+    if _value == epsChangeHashF or _value == epsChangeHash0 or _value == epsChangeHash1 or _value == epsChangeHash2 or _value == epsChangeHash3 or _value == epsChangeHash4 or _value == epsChangeHash5 or _value == epsChangeHash6 or _value == epsChangeHash7
         _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash0
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash1
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash2
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash3
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash4
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash5
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash6
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-    if _value == epsChangeHash7
-        _cellText := _value > 999 ? '#+999%' : _value < -999 ? '#-999%' : _value > 0 ? '#' + '+' + str.tostring(_value, '0') + '%' : '#' + str.tostring(_value, '0') + '%'
-        _cellText
-
-    // Color for even or odd row
+    
+    // Determine the background color for even or odd rows
     myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
+    
+    // Fill the specified cell in the table with the change text and color
     table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = _cellText == '0%' or _cellText == 'N/A' ? tableTextColor : _c_color, text_size = tableSize)
 
-// For EPS surprises
-fillCellCompSurp(_table, _column, _row, _value) =>
-    _c_color = _value >= 0 ? posSurpColor : negSurpColor
-    _transp = 0
-    _cellText = _value > 999 ? '+999%' : _value < -999 ? '-999%' : _value > 0 ? '+' + str.tostring(_value, '0') + '%' : str.tostring(_value, '0') + '%'
-    if _cellText == 'NaN%'
-        _cellText := 'N/A'
-        _cellText
-    if _cellText == '+0%'
-        _cellText := '0%'
-        _cellText
-    if _row == 11
-        _cellText := '-'
-        _cellText
-    // Color for even or odd row
-    myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
-    table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = _cellText == '0%' or _cellText == 'N/A' ? tableTextColor : _c_color, text_size = tableSize)
+// Request total revenue for the current ticker and financial period
+rev = request.financial(syminfo.tickerid, 'TOTAL_REVENUE', 'FQ', barmerge.gaps_on, ignore_invalid_symbol = true)
 
-// For EPS QoQ change
-fillCellComp2(_table, _column, _row, _value) =>
-    _c_color = _value >= 0 ? tablePosColor : tableNegColor
-    _transp = 0
-    // Recent modification made that I need to put the IBD/MarketSmith limitation of +999% here
-    _cellText = _value > 999 ? '+999%' : _value < -999 ? '-999%' : _value > 0 ? '+' + str.tostring(_value, '0') + '%' : str.tostring(_value, '0') + '%'
-    if _cellText == 'NaN%'
-        _cellText := 'N/A'
-        _cellText
-    // Color for even or odd row
-    myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
-    table.cell(_table, _column, _row, _cellText, bgcolor = myColor, text_color = _cellText == 'N/A' ? tableTextColor : _c_color, text_size = tableSize)
+// Function to manage an array by adding a value to the front and removing the last element
+updateArray(arrayId, val) =>
+    array.unshift(arrayId, val) // Add the new value at the beginning of the array
+    array.pop(arrayId) // Remove the last element of the array
 
-// Function for date
-f_array(arrayId, val) =>
-    array.unshift(arrayId, val)
-    array.pop(arrayId)
-
-ftdate(_table, _column, _row, _value) =>
+// Function to fill a table cell with a date value
+fillCellDate(_table, _column, _row, _value) =>
+    // Determine the background color based on the row index (odd/even)
     myColor = _row == 10 or _row == 8 or _row == 6 or _row == 4 ? bgColorOdd : bgColorEven
+    
+    // Fill the specified cell in the table with the date value and color
     table.cell(table_id = _table, column = _column, row = _row, text = _value, bgcolor = myColor, text_color = tableTextColor, text_size = tableSize)
 
-// For date
-var date = array.new_int(datasize)
+// Initialise an array for storing date values
+var dateArray = array.new_int(datasize)
+
+// If revenue data is available, update the date array with the current time
 if bool(rev)
-    f_array(date, time)
+    updateArray(dateArray, time)
 
-// Function used to master the fill of cells
-condRepeatSameValueAtLastLine = actualEPS0 == eps1 and standardEPS0 == standardEPS1 and repEPSEst == repEPSEst[1]
+// Condition to determine if the last EPS values are unchanged
+isEPSRep = actualEPS0 == eps1 and standardEPS0 == standardEPS1 and repEPSEst == repEPSEst[1]
+
+// Check if the current bar is the last one and if the display table is enabled
 if barstate.islast and displayTable
-    // EPS Display
-    if tableComp == true
+    // Display EPS
+    if tableComp
         if tableEst
-            fillCellEPS(epsTable, 1, 11, epsF, eps3)
-        fillCellEPS(epsTable, 1, 10, condRepeatSameValueAtLastLine ? na : repEPS, condRepeatSameValueAtLastLine ? na : eps4)
-        fillCellEPS(epsTable, 1, 9, eps1, eps5)
-        fillCellEPS(epsTable, 1, 8, eps2, eps6)
-        fillCellEPS(epsTable, 1, 7, eps3, eps7)
-        fillCellEPS(epsTable, 1, 6, eps4, eps8)
-        fillCellEPS(epsTable, 1, 5, eps5, eps9)
-        fillCellEPS(epsTable, 1, 4, eps6, eps10)
-        fillCellEPS(epsTable, 1, 3, eps7, eps11)
+            fillCellComp(epsTable, 1, 11, epsF, eps3, '0.00')
 
-    if tableComp == false
+        fillCellComp(epsTable, 1, 10, isEPSRep ? na : repEPS, isEPSRep ? na : eps4, '0.00')
+        fillCellComp(epsTable, 1, 9, eps1, eps5, '0.00')
+        fillCellComp(epsTable, 1, 8, eps2, eps6, '0.00')
+        fillCellComp(epsTable, 1, 7, eps3, eps7, '0.00')
+        fillCellComp(epsTable, 1, 6, eps4, eps8, '0.00')
+        fillCellComp(epsTable, 1, 5, eps5, eps9, '0.00')
+        fillCellComp(epsTable, 1, 4, eps6, eps10, '0.00')
+        fillCellComp(epsTable, 1, 3, eps7, eps11, '0.00')
+
+    else
         if tableEst
             fillCell(epsTable, 1, 11, epsF, '0.00')
-        fillCell(epsTable, 1, 10, condRepeatSameValueAtLastLine ? na : actualEPS0, '0.00')
+
+        fillCell(epsTable, 1, 10, isEPSRep ? na : actualEPS0, '0.00')
         fillCell(epsTable, 1, 9, eps1, '0.00')
         fillCell(epsTable, 1, 8, eps2, '0.00')
         fillCell(epsTable, 1, 7, eps3, '0.00')
@@ -585,62 +543,63 @@ if barstate.islast and displayTable
         fillCell(epsTable, 1, 4, eps6, '0.00')
         fillCell(epsTable, 1, 3, eps7, '0.00')
 
-    // EPS YoY change on same quarter
+    // Display EPS YoY Change
     if tableYoY
-        fillCellComp(epsTable, 2, 3, na(epsChange7) ? epsChangeHash7 : epsChange7)
-        fillCellComp(epsTable, 2, 4, na(epsChange6) ? epsChangeHash6 : epsChange6)
-        fillCellComp(epsTable, 2, 5, na(epsChange5) ? epsChangeHash5 : epsChange5)
-        fillCellComp(epsTable, 2, 6, na(epsChange4) ? epsChangeHash4 : epsChange4)
-        fillCellComp(epsTable, 2, 7, na(epsChange3) ? epsChangeHash3 : epsChange3)
-        fillCellComp(epsTable, 2, 8, na(epsChange2) ? epsChangeHash2 : epsChange2)
-        fillCellComp(epsTable, 2, 9, na(epsChange1) ? epsChangeHash1 : epsChange1)
-        fillCellComp(epsTable, 2, 10, condRepeatSameValueAtLastLine ? na : na(epsChange0) ? epsChangeHash0 : epsChange0)
+        fillCellChg(epsTable, 2, 3, na(epsChange7) ? epsChangeHash7 : epsChange7, false)
+        fillCellChg(epsTable, 2, 4, na(epsChange6) ? epsChangeHash6 : epsChange6, false)
+        fillCellChg(epsTable, 2, 5, na(epsChange5) ? epsChangeHash5 : epsChange5, false)
+        fillCellChg(epsTable, 2, 6, na(epsChange4) ? epsChangeHash4 : epsChange4, false)
+        fillCellChg(epsTable, 2, 7, na(epsChange3) ? epsChangeHash3 : epsChange3, false)
+        fillCellChg(epsTable, 2, 8, na(epsChange2) ? epsChangeHash2 : epsChange2, false)
+        fillCellChg(epsTable, 2, 9, na(epsChange1) ? epsChangeHash1 : epsChange1, false)
+        fillCellChg(epsTable, 2, 10, isEPSRep ? na : na(epsChange0) ? epsChangeHash0 : epsChange0, false)
         if tableEst
-            fillCellComp(epsTable, 2, 11, na(epsChangeF) ? epsChangeHashF : epsChangeF)
+            fillCellChg(epsTable, 2, 11, na(epsChangeF) ? epsChangeHashF : epsChangeF, false)
 
-    // EPS QoQ change
-    if tableQoQ == true
-        fillCellComp2(epsTable, 3, 3, epsChangeQoQ7)
-        fillCellComp2(epsTable, 3, 4, epsChangeQoQ6)
-        fillCellComp2(epsTable, 3, 5, epsChangeQoQ5)
-        fillCellComp2(epsTable, 3, 6, epsChangeQoQ4)
-        fillCellComp2(epsTable, 3, 7, epsChangeQoQ3)
-        fillCellComp2(epsTable, 3, 8, epsChangeQoQ2)
-        fillCellComp2(epsTable, 3, 9, epsChangeQoQ1)
-        fillCellComp2(epsTable, 3, 10, epsChangeQoQ0)
+    // Display EPS QoQ Change
+    if tableQoQ
+        fillCellChg(epsTable, 3, 3, epsChangeQoQ7, false)
+        fillCellChg(epsTable, 3, 4, epsChangeQoQ6, false)
+        fillCellChg(epsTable, 3, 5, epsChangeQoQ5, false)
+        fillCellChg(epsTable, 3, 6, epsChangeQoQ4, false)
+        fillCellChg(epsTable, 3, 7, epsChangeQoQ3, false)
+        fillCellChg(epsTable, 3, 8, epsChangeQoQ2, false)
+        fillCellChg(epsTable, 3, 9, epsChangeQoQ1, false)
+        fillCellChg(epsTable, 3, 10, epsChangeQoQ0, false)
         if tableEst
-            fillCellComp2(epsTable, 3, 11, epsChangeQoQF)
+            fillCellChg(epsTable, 3, 11, epsChangeQoQF, false)
 
-    // EPS surprises
+    // Display EPS surprises
     if tableSurp
-        fillCellCompSurp(epsTable, 4, 3, epsSurp7)
-        fillCellCompSurp(epsTable, 4, 4, epsSurp6)
-        fillCellCompSurp(epsTable, 4, 5, epsSurp5)
-        fillCellCompSurp(epsTable, 4, 6, epsSurp4)
-        fillCellCompSurp(epsTable, 4, 7, epsSurp3)
-        fillCellCompSurp(epsTable, 4, 8, epsSurp2)
-        fillCellCompSurp(epsTable, 4, 9, epsSurp1)
-        fillCellCompSurp(epsTable, 4, 10, epsSurp0)
+        fillCellChg(epsTable, 4, 3, epsSurp7, true)
+        fillCellChg(epsTable, 4, 4, epsSurp6, true)
+        fillCellChg(epsTable, 4, 5, epsSurp5, true)
+        fillCellChg(epsTable, 4, 6, epsSurp4, true)
+        fillCellChg(epsTable, 4, 7, epsSurp3, true)
+        fillCellChg(epsTable, 4, 8, epsSurp2, true)
+        fillCellChg(epsTable, 4, 9, epsSurp1, true)
+        fillCellChg(epsTable, 4, 10, epsSurp0, true)
         if tableEst
-            fillCellCompSurp(epsTable, 4, 11, 0)
+            fillCellChg(epsTable, 4, 11, 0, true)
 
-    // Sales display
-    if tableComp == true
+
+    // Display sales
+    if tableComp
         if tableEst
-            fillCellSales(epsTable, 5, 11, futureS, salesFmt3)
-        fillCellSales(epsTable, 5, 10, condRepeatSameValueAtLastLine ? na : recentEarn and sameSales ? na : salesFmt0, condRepeatSameValueAtLastLine ? na : salesFmt4)
-        fillCellSales(epsTable, 5, 9, salesFmt1, salesFmt5)
-        fillCellSales(epsTable, 5, 8, salesFmt2, salesFmt6)
-        fillCellSales(epsTable, 5, 7, salesFmt3, salesFmt7)
-        fillCellSales(epsTable, 5, 6, salesFmt4, salesFmt8)
-        fillCellSales(epsTable, 5, 5, salesFmt5, salesFmt9)
-        fillCellSales(epsTable, 5, 4, salesFmt6, salesFmt10)
-        fillCellSales(epsTable, 5, 3, salesFmt7, salesFmt11)
+            fillCellComp(epsTable, 5, 11, futureS, salesFmt3, '0.0')
+        fillCellComp(epsTable, 5, 10, isEPSRep ? na : recentEarn and sameSales ? na : salesFmt0, isEPSRep ? na : salesFmt4, '0.0')
+        fillCellComp(epsTable, 5, 9, salesFmt1, salesFmt5, '0.0')
+        fillCellComp(epsTable, 5, 8, salesFmt2, salesFmt6, '0.0')
+        fillCellComp(epsTable, 5, 7, salesFmt3, salesFmt7, '0.0')
+        fillCellComp(epsTable, 5, 6, salesFmt4, salesFmt8, '0.0')
+        fillCellComp(epsTable, 5, 5, salesFmt5, salesFmt9, '0.0')
+        fillCellComp(epsTable, 5, 4, salesFmt6, salesFmt10, '0.0')
+        fillCellComp(epsTable, 5, 3, salesFmt7, salesFmt11, '0.0')
 
-    if tableComp == false
+    else
         if tableEst
             fillCell(epsTable, 5, 11, futureS, '0.0')
-        fillCell(epsTable, 5, 10, condRepeatSameValueAtLastLine ? na : recentEarn and sameSales ? na : salesFmt0, '0.0')
+        fillCell(epsTable, 5, 10, isEPSRep ? na : recentEarn and sameSales ? na : salesFmt0, '0.0')
         fillCell(epsTable, 5, 9, salesFmt1, '0.0')
         fillCell(epsTable, 5, 8, salesFmt2, '0.0')
         fillCell(epsTable, 5, 7, salesFmt3, '0.0')
@@ -649,118 +608,141 @@ if barstate.islast and displayTable
         fillCell(epsTable, 5, 4, salesFmt6, '0.0')
         fillCell(epsTable, 5, 3, salesFmt7, '0.0')
 
-    // Sales YoY change
+    // Display sales YoY change
     if tableYoY
-        fillCellComp(epsTable, 6, 3, salesGrowth7)
-        fillCellComp(epsTable, 6, 4, salesGrowth6)
-        fillCellComp(epsTable, 6, 5, salesGrowth5)
-        fillCellComp(epsTable, 6, 6, salesGrowth4)
-        fillCellComp(epsTable, 6, 7, salesGrowth3)
-        fillCellComp(epsTable, 6, 8, salesGrowth2)
-        fillCellComp(epsTable, 6, 9, salesGrowth1)
-        fillCellComp(epsTable, 6, 10, condRepeatSameValueAtLastLine ? na : recentEarn and sameSales ? na : actualSalesGrowth0)
+        fillCellChg(epsTable, 6, 3, salesGrowth7, false)
+        fillCellChg(epsTable, 6, 4, salesGrowth6, false)
+        fillCellChg(epsTable, 6, 5, salesGrowth5, false)
+        fillCellChg(epsTable, 6, 6, salesGrowth4, false)
+        fillCellChg(epsTable, 6, 7, salesGrowth3, false)
+        fillCellChg(epsTable, 6, 8, salesGrowth2, false)
+        fillCellChg(epsTable, 6, 9, salesGrowth1, false)
+        fillCellChg(epsTable, 6, 10, isEPSRep ? na : recentEarn and sameSales ? na : actualSalesGrowth0, false)
         if tableEst
-            fillCellComp(epsTable, 6, 11, salesGrowthF)
+            fillCellChg(epsTable, 6, 11, salesGrowthF, false)
 
-    // Sales QoQ change
-    if tableQoQ == true
-        fillCellComp(epsTable, 7, 3, salesGrowthQoQ7)
-        fillCellComp(epsTable, 7, 4, salesGrowthQoQ6)
-        fillCellComp(epsTable, 7, 5, salesGrowthQoQ5)
-        fillCellComp(epsTable, 7, 6, salesGrowthQoQ4)
-        fillCellComp(epsTable, 7, 7, salesGrowthQoQ3)
-        fillCellComp(epsTable, 7, 8, salesGrowthQoQ2)
-        fillCellComp(epsTable, 7, 9, salesGrowthQoQ1)
-        fillCellComp(epsTable, 7, 10, condRepeatSameValueAtLastLine ? na : recentEarn and sameSales ? na : salesGrowthQoQ0)
+    // Display sales QoQ Change
+    if tableQoQ
+        fillCellChg(epsTable, 7, 3, salesGrowthQoQ7, false)
+        fillCellChg(epsTable, 7, 4, salesGrowthQoQ6, false)
+        fillCellChg(epsTable, 7, 5, salesGrowthQoQ5, false)
+        fillCellChg(epsTable, 7, 6, salesGrowthQoQ4, false)
+        fillCellChg(epsTable, 7, 7, salesGrowthQoQ3, false)
+        fillCellChg(epsTable, 7, 8, salesGrowthQoQ2, false)
+        fillCellChg(epsTable, 7, 9, salesGrowthQoQ1, false)
+        fillCellChg(epsTable, 7, 10, isEPSRep ? na : recentEarn and sameSales ? na : salesGrowthQoQ0, false)
         if tableEst
-            fillCellComp(epsTable, 7, 11, salesGrowthQoQF)
+            fillCellChg(epsTable, 7, 11, salesGrowthQoQF, false)
 
-    // Sales surprises
+    // Display sales surprises
     if tableSurp
-        fillCellCompSurp(epsTable, 8, 3, salesSurp7)
-        fillCellCompSurp(epsTable, 8, 4, salesSurp6)
-        fillCellCompSurp(epsTable, 8, 5, salesSurp5)
-        fillCellCompSurp(epsTable, 8, 6, salesSurp4)
-        fillCellCompSurp(epsTable, 8, 7, salesSurp3)
-        fillCellCompSurp(epsTable, 8, 8, salesSurp2)
-        fillCellCompSurp(epsTable, 8, 9, salesSurp1)
-        fillCellCompSurp(epsTable, 8, 10, salesSurp0)
+        fillCellChg(epsTable, 8, 3, salesSurp7, true)
+        fillCellChg(epsTable, 8, 4, salesSurp6, true)
+        fillCellChg(epsTable, 8, 5, salesSurp5, true)
+        fillCellChg(epsTable, 8, 6, salesSurp4, true)
+        fillCellChg(epsTable, 8, 7, salesSurp3, true)
+        fillCellChg(epsTable, 8, 8, salesSurp2, true)
+        fillCellChg(epsTable, 8, 9, salesSurp1, true)
+        fillCellChg(epsTable, 8, 10, salesSurp0, true)
         if tableEst
-            fillCellCompSurp(epsTable, 8, 11, 0)
+            fillCellChg(epsTable, 8, 11, 0, true)
 
-    // GM
-    if tableGM == true
-        fillCellComp(epsTable, 9, 3, gm7)
-        fillCellComp(epsTable, 9, 4, gm6)
-        fillCellComp(epsTable, 9, 5, gm5)
-        fillCellComp(epsTable, 9, 6, gm4)
-        fillCellComp(epsTable, 9, 7, gm3)
-        fillCellComp(epsTable, 9, 8, gm2)
-        fillCellComp(epsTable, 9, 9, gm1)
-        fillCellComp(epsTable, 9, 10, gm0)
+    // Display GM values
+    if tableGM
+        fillCellChg(epsTable, 9, 3, gm7, false)
+        fillCellChg(epsTable, 9, 4, gm6, false)
+        fillCellChg(epsTable, 9, 5, gm5, false)
+        fillCellChg(epsTable, 9, 6, gm4, false)
+        fillCellChg(epsTable, 9, 7, gm3, false)
+        fillCellChg(epsTable, 9, 8, gm2, false)
+        fillCellChg(epsTable, 9, 9, gm1, false)
+        fillCellChg(epsTable, 9, 10, gm0, false)
 
-    // ROE
-    if tableROE == true
-        fillCellComp(epsTable, 10, 3, roe7)
-        fillCellComp(epsTable, 10, 4, roe6)
-        fillCellComp(epsTable, 10, 5, roe5)
-        fillCellComp(epsTable, 10, 6, roe4)
-        fillCellComp(epsTable, 10, 7, roe3)
-        fillCellComp(epsTable, 10, 8, roe2)
-        fillCellComp(epsTable, 10, 9, roe1)
-        fillCellComp(epsTable, 10, 10, roe0)
+    // Display ROE values
+    if tableROE
+        fillCellChg(epsTable, 10, 3, roe7, false)
+        fillCellChg(epsTable, 10, 4, roe6, false)
+        fillCellChg(epsTable, 10, 5, roe5, false)
+        fillCellChg(epsTable, 10, 6, roe4, false)
+        fillCellChg(epsTable, 10, 7, roe3, false)
+        fillCellChg(epsTable, 10, 8, roe2, false)
+        fillCellChg(epsTable, 10, 9, roe1, false)
+        fillCellChg(epsTable, 10, 10, roe0, false)
 
-    // For Date MMM-yy
+    // Fill table cells with formatted date values (MMM-yy)
     for i = 0 to datasize - 3 by 1
+        // Check if the current bar is the last one
         if barstate.islast
-            ftdate(epsTable, 0, datasize - i, str.format('{0, date, MMM-yy}', array.get(date, i)))
-    if tableEst
-        ftdate(epsTable, 0, 11, str.format('{0, date, MMM-yy}', timeF) + ' est')
+            // Fill the date cell in the table using the formatted date from the dateArray
+            fillCellDate(epsTable, 0, datasize - i, str.format('{0, date, MMM-yy}', array.get(dateArray, i)))
 
-    // Headings of table
-    table.cell(epsTable, 0, 0, text = 'Quarterly', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+    // If estimating values are to be shown, fill the estimation date cell
+    if tableEst
+        fillCellDate(epsTable, 0, 11, str.format('{0, date, MMM-yy}', timeF) + ' est.')
+
+    // Set headings for the EPS table
+    table.cell(epsTable, 0, 0, text = 'Quarter', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
     table.cell(epsTable, 1, 0, text = 'EPS ($)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
+    // Conditional headings based on table display options
     if tableYoY
-        table.cell(epsTable, 2, 0, text = 'Chg (%)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        table.cell(epsTable, 2, 0, text = 'YoY', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        table.cell(epsTable, 6, 0, text = 'YoY', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
     if tableQoQ
         table.cell(epsTable, 3, 0, text = 'QoQ', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        table.cell(epsTable, 6, 0, text = 'YoY', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
     if tableSurp
-        table.cell(epsTable, 4, 0, text = 'Surp (%)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        table.cell(epsTable, 4, 0, text = 'Surp', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        table.cell(epsTable, 8, 0, text = 'Surp', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
     table.cell(epsTable, 5, 0, text = 'Sales (M)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
-    if tableYoY
-        table.cell(epsTable, 6, 0, text = 'Chg (%)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
-    if tableQoQ
-        table.cell(epsTable, 7, 0, text = 'QoQ', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
-    if tableSurp
-        table.cell(epsTable, 8, 0, text = 'Surp (%)', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
     if tableGM
         table.cell(epsTable, 9, 0, text = 'GM', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+        
+        // If estimating values are to be shown
         if tableEst
             table.cell(epsTable, 9, 11, text = '-', bgcolor = bgColorEven, text_color = tableTextColor, text_size = tableSize)
+
     if tableROE
         table.cell(epsTable, 10, 0, text = 'ROE', bgcolor = displayTable ? color.white : bgColorOdd, text_color = tableTextColor, text_size = tableSize)
+
+        // If estimating values are to be shown
         if tableEst
             table.cell(epsTable, 10, 11, text = '-', bgcolor = bgColorEven, text_color = tableTextColor, text_size = tableSize)
 
-// Display arrow on the graph with EPS % change
-selectEPS = ta.valuewhen(epsTime, epsChangeHash0, 0) > ta.valuewhen(epsTime, epsChange0, 0)
-EPSvalue = graphQoQ ? epsChangeQoQ0 : selectEPS ? ta.valuewhen(epsTime, epsChangeHash0, 0) : ta.valuewhen(epsTime, epsChange0, 0)
-salesValue = graphQoQ ? salesGrowthQoQ0 : ta.valuewhen(epsTime, actualSalesGrowth0, 0)
-textLabel = graphSales ? 'EPS & Sales' : 'EPS'
-EPSDisplayText = EPSvalue > 999 ? '\n+999%' : EPSvalue > 0 ? '\n+' + str.tostring(EPSvalue, '0') + '%' : '\n' + str.tostring(EPSvalue, '0') + '%'
-EPSDisplayText := EPSDisplayText == '\nNaN%' ? '\nN/A' : EPSDisplayText
-EPSDisplayText := EPSDisplayText == '\n+0%' ? '\n0%' : EPSDisplayText
-salesDisplayText = (epsTime or epsTime[1]) and sameSales and barstate.islast ? 'NaN%' : salesValue > 999 ? '+999%' : salesValue > 0 ? '+' + str.tostring(salesValue, '0') + '%' : str.tostring(salesValue, '0') + '%'
-salesDisplayText := salesDisplayText == 'NaN%' ? 'N/A' : salesDisplayText
-salesDisplayText := salesDisplayText == '+0%' ? '0%' : salesDisplayText
+// Determine the EPS % change for display on the graph
+// Check if the hash EPS change is greater than the previous EPS change
+epsHashGreater = ta.valuewhen(epsTime, epsChangeHash0, 0) > ta.valuewhen(epsTime, epsChange0, 0)
 
-// Plot sales or not, depending on the result
+// If graphQoQ is true, use the QoQ EPS change; otherwise, use selectEPS or the regular EPS change
+graphEPSValue = graphQoQ ? epsChangeQoQ0 : epsHashGreater ? ta.valuewhen(epsTime, epsChangeHash0, 0) : ta.valuewhen(epsTime, epsChange0, 0)
+
+// If graphQoQ is true, use the QoQ sales growth; otherwise, use the actual sales growth
+graphSalesValue = graphQoQ ? salesGrowthQoQ0 : ta.valuewhen(epsTime, actualSalesGrowth0, 0)
+
+// Set the graph label based on whether sales data should be included
+graphLabel = graphSales ? 'EPS & Sales' : 'EPS'
+
+// Format the EPS display text on the graph based on its value
+graphEPSText = graphEPSValue > 999 ? '\n+999%' : graphEPSValue > 0 ? '\n+' + str.tostring(graphEPSValue, '0') + '%' : '\n' + str.tostring(graphEPSValue, '0') + '%'
+graphEPSText := graphEPSText == '\nNaN%' ? '\nN/A' : graphEPSText == '\n+0%' ? '\n0%' : graphEPSText
+
+// Format the sales display text on the graph based on its value
+graphSalesText = (epsTime or epsTime[1]) and sameSales and barstate.islast ? 'NaN%' : graphSalesValue > 999 ? '+999%' : graphSalesValue > 0 ? '+' + str.tostring(graphSalesValue, '0') + '%' : str.tostring(graphSalesValue, '0') + '%'
+graphSalesText := graphSalesText == 'NaN%' ? 'N/A' : graphSalesText == '+0%' ? '0%' : graphSalesText
+
+// Plot arrows and labels on the graph based on conditions
 if epsTime and graphArrows
-    arrowLabel = label.new(bar_index, bar_index, xloc = xloc.bar_index, yloc = yloc.belowbar, text = textLabel, style = label.style_triangleup, color = graphArrowColor, textcolor = graphArrowColor, size = graphArrowSize)
-    mainLabel = label.new(bar_index, bar_index, xloc = xloc.bar_index, yloc = yloc.belowbar, text = textLabel, style = label.style_triangleup, color = color.new(color.aqua, 100), textcolor = graphArrowColor, size = graphArrowSize)
+    // Create a label for EPS and optionally sales
+    graphArrowLabel = label.new(bar_index, bar_index, xloc = xloc.bar_index, yloc = yloc.belowbar, text = graphLabel, style = label.style_triangleup, color = graphArrowColor, textcolor = graphArrowColor, size = graphArrowSize)
+
+    // If sales data is included, create a sales growth label
     if graphSales
-        salesGrowthLabel = label.new(bar_index, low, xloc = xloc.bar_index, yloc = yloc.belowbar, text = EPSDisplayText + ' | ' + salesDisplayText, style = label.style_triangleup, color = color.new(color.aqua, 100), textcolor = EPSDisplayText == '\nN/A' or EPSDisplayText == '\n0%' ? graphArrowColor : EPSvalue > -1 ? graphPosColor : graphNegColor, size = graphArrowSize)
-        salesGrowthLabel
-    if not graphSales
-        epsChangeLabel = label.new(bar_index, low, xloc = xloc.bar_index, yloc = yloc.belowbar, text = EPSDisplayText, style = label.style_triangleup, color = color.new(color.aqua, 100), textcolor = EPSDisplayText == '\nN/A' or EPSDisplayText == '\n0%' ? graphArrowColor : EPSvalue > -1 ? graphPosColor : graphNegColor, size = graphArrowSize)
-        epsChangeLabel
+        salesGrowthLabel = label.new(bar_index, low, xloc = xloc.bar_index, yloc = yloc.belowbar, text = graphEPSText + ' | ' + graphSalesText, style = label.style_triangleup, color = color.new(color.aqua, 100), textcolor = graphEPSText == '\nN/A' or graphEPSText == '\n0%' ? graphArrowColor : graphEPSValue > -1 ? graphPosColor : graphNegColor, size = graphArrowSize)
+    
+    // If sales data is not included, create an EPS change label
+    else
+        epsChangeLabel = label.new(bar_index, low, xloc = xloc.bar_index, yloc = yloc.belowbar, text = graphEPSText, style = label.style_triangleup, color = color.new(color.aqua, 100), textcolor = graphEPSText == '\nN/A' or graphEPSText == '\n0%' ? graphArrowColor : graphEPSValue > -1 ? graphPosColor : graphNegColor, size = graphArrowSize)
