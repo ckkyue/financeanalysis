@@ -61,7 +61,7 @@ vcpPeriod = input.int(title="VCP Period", defval=10, minval=1, group='MVP & VCP'
 contractionLimit = input.float(title="Contraction", defval=0.05, minval=0.01, group='MVP & VCP')
 
 // Calculate M condition
-greater = close >= close[1] ? 1 : 0
+greater = close > close[1] ? 1 : 0
 smaller = close < close[1] ? 1 : 0
 mSum = math.sum(greater, mvpPeriod)
 revMSum = math.sum(smaller, mvpPeriod)
@@ -87,14 +87,6 @@ else if isM and isP and not isV
     mvpLabel := "MP"
 else if isM and isV and isP
     mvpLabel := "MVP"
-else if isRevM and not isV and not isRevP
-    mvpLabel := "-M"
-else if isRevM and isV and not isRevP
-    mvpLabel := "-MV"
-else if isRevM and isRevP and not isV
-    mvpLabel := "-MP"
-else if isRevM and isV and isRevP
-    mvpLabel := "-MVP"
 else 
     mvpLabel := na
 
@@ -103,10 +95,6 @@ plotshape(mvpLabel == "M", title='M', style=shape.triangleup, location=location.
 plotshape(mvpLabel == "MV", title='MV', style=shape.triangleup, location=location.abovebar, color=color.blue, size=size.tiny, force_overlay = true)
 plotshape(mvpLabel == "MP", title='MP', style=shape.triangleup, location=location.abovebar, color=color.yellow, size=size.tiny, force_overlay = true)
 plotshape(mvpLabel == "MVP", title='MVP', style=shape.triangleup, location=location.abovebar, color=color.green, size=size.tiny, force_overlay = true)
-plotshape(mvpLabel == "-M", title='-M', style=shape.triangledown, location=location.belowbar, color=color.olive, size=size.tiny, force_overlay = true)
-plotshape(mvpLabel == "-MV", title='-MV', style=shape.triangledown, location=location.belowbar, color=color.orange, size=size.tiny, force_overlay = true)
-plotshape(mvpLabel == "-MP", title='-MP', style=shape.triangledown, location=location.belowbar, color=color.purple, size=size.tiny, force_overlay = true)
-plotshape(mvpLabel == "-MVP", title='-MVP', style=shape.triangledown, location=location.belowbar, color=color.red, size=size.tiny, force_overlay = true)
 
 // Calculate VCP condition
 highestClose = ta.highest(close, vcpPeriod)
