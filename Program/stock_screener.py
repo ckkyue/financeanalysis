@@ -414,7 +414,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         # Filter the stocks
         if index_name == "^HSI":
             rs_df = rs_df[rs_df["RS"] >= RS]
-            volume_df = volume_df[(volume_df["Volume SMA 5 Rank"] <= 800) | (volume_df["Volume SMA 20 Rank"] <= 800)]
+            volume_df = volume_df[(volume_df["Volume SMA 5 Rank"] <= 1000) | (volume_df["Volume SMA 20 Rank"] <= 1000)]
 
             # Get the list of stocks from each dataframe
             rs_stocks = set(rs_df["Stock"])
