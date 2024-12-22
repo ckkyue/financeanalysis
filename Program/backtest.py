@@ -23,12 +23,15 @@ def stocks_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Define the filename for stock_dict
-    stock_dict_filename = f"Backtest/Stock dict/{infix}stock_dict{factors}.txt"
+    # Define the result folder
+    result_folder = "Backtest/Stock dict"
+
+    # Define the filename
+    filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
     
     # Open the file if it exists
-    if os.path.isfile(stock_dict_filename):
-        with open(stock_dict_filename, "r") as file:
+    if os.path.isfile(filename):
+        with open(filename, "r") as file:
             # Retrieve the content of stock_dict as a dictionary
             stock_dict = ast.literal_eval(file.read())
     else:
@@ -166,8 +169,11 @@ def create_index_df_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Initialize an empty dictionary to store the dataframes
     index_df_dict = {}
 
-    # Define the filename of index_df_dict
-    index_df_dict_filename = f"Backtest/{infix}index_df_dicttop{top}.pkl"
+    # Define the result folder
+    result_folder = "Backtest"
+
+    # Define the filename
+    filename = os.path.join(result_folder, f"{infix}index_df_dicttop{top}.pkl")
 
     # Iterate over all factors
     for factors in tqdm(factors_group):
@@ -181,7 +187,7 @@ def create_index_df_dict(end_dates, current_date, index_name, index_dict, NASDAQ
         index_df_dict[factors_tuple] = index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
     # Save index_df_dict as a file
-    with open(index_df_dict_filename, "wb") as file:
+    with open(filename, "wb") as file:
         pickle.dump(index_df_dict, file)
 
 # Plot the equity curve of stocks     
@@ -189,12 +195,15 @@ def plot_stocks_equity_curve(index_name, index_dict, NASDAQ_all, factors, factor
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Define the filename of index_df_dict
-    index_df_dict_filename = f"Backtest/{infix}index_df_dicttop{top}.pkl"
+    # Define the result folder
+    result_folder = "Backtest"
+
+    # Define the filename
+    filename = os.path.join(result_folder, f"{infix}index_df_dicttop{top}.pkl")
 
     # Open the file if it exists
-    if os.path.isfile(index_df_dict_filename):
-        with open(index_df_dict_filename, "rb") as file:
+    if os.path.isfile(filename):
+        with open(filename, "rb") as file:
             # Retrieve the content of index_df_dict as a dictionary
             index_df_dict = pickle.load(file)
     else:
@@ -373,7 +382,8 @@ def save_stats(index_name, index_dict, NASDAQ_all, factors_group, top, reanalyse
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
     # Check if there are pre-existing data
-    filename = f"Backtest/{infix}factors_statstop{top}.npy"
+    result_folder = "Backtest"
+    filename = os.path.join(result_folder, f"{infix}factors_statstop{top}.npy")
 
     # Save the data to a file if pre-existing data do not exist or reanalyse is true
     if not os.path.isfile(filename) or reanalyse:
