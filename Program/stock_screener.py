@@ -457,9 +457,9 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
 
         # Check if the "end_date_fmt" folder exists inside the "Result" folder, create it if it does not
-        folder_path = os.path.join(result_folder, f"{end_date_fmt}")
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        folder = os.path.join(result_folder, f"{end_date_fmt}")
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
         # Export the results to an Excel file inside the "end_date_fmt" folder
         filename = get_excel_filename(end_date, index_name, index_dict, period_hk, period_us, RS, NASDAQ_all, result_folder)
