@@ -7,7 +7,6 @@ from pandas_datareader import data as pdr
 import os
 from scipy.stats import linregress
 import time
-from yahoo_fin import stock_info as si
 import yfinance as yf
 
 # Determines if a given time is within the Daylight Saving Time (DST) period in the USA.
@@ -302,6 +301,7 @@ def stock_market(end_date, current_date, index_name, HKEX_all, NASDAQ_all):
 
     # NASDAQ Composite
     elif index_name == "^IXIC":
+        from yahoo_fin import stock_info as si
         tickers = si.tickers_nasdaq()
         tickers = [str(ticker).replace(".", "-").replace("^", "-P").replace("/", "-") for ticker in tickers]
         tickers.sort()
