@@ -540,19 +540,20 @@ def main():
     period_us = 252 # Period for US stocks
     RS = 90
     factors = [1, 1, 1]
-    backtest = False
+    backtest = True
 
     # Index
-    index_name = "^HSI"
+    index_name = "^GSPC"
     index_dict = {"^HSI": "HKEX", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
     # Get the current date
     current_date = get_current_date(start, index_name)
 
     # Create the end dates
-    end_dates = generate_end_dates(5, current_date)
+    end_dates = generate_end_dates(7, current_date)
     end_dates.append(current_date)
-    end_dates = [current_date]
+
+    # end_dates = [current_date]
 
     # Stock selection
     select_stocks(end_dates, current_date, index_name, index_dict, 
