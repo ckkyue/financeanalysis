@@ -62,8 +62,8 @@ def check_conds_tech(index_name, df):
     periods = [5, 20, 50, 200]
 
     for i in periods:
-        df.loc[f"SMA {str(i)}"] = SMA(df, i)
-        df.loc[f"EMA {str(i)}"] = EMA(df, i)
+        df.loc[:, f"SMA {str(i)}"] = SMA(df, i)
+        df.loc[:, f"EMA {str(i)}"] = EMA(df, i)
 
     # Calculate the moving averages
     SMA_5 = df["SMA 5"].iloc[-1]
@@ -401,7 +401,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         index_df = index_df[index_df.index <= end_date]
 
         # Calculate the percent change of the index
-        index_df["Percent Change"] = index_df["Close"].pct_change()
+        index_df.loc[:, "Percent Change"] = index_df["Close"].pct_change()
 
         # Calculate the total return of the index
         index_return = (index_df["Percent Change"] + 1).tail(period).cumprod().iloc[-1]

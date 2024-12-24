@@ -44,7 +44,7 @@ def create_rs_volume_df(stocks, current_date, end_dates, periods, index_returns,
                 df = df[df.index <= end_date]
 
                 # Calculate the percent change of the stock
-                df["Percent Change"] = df["Close"].pct_change()
+                df.loc[:, "Percent Change"] = df["Close"].pct_change()
 
                 # Calculate the stock return
                 stock_return = (df["Percent Change"] + 1).tail(period).cumprod().iloc[-1]
@@ -56,8 +56,8 @@ def create_rs_volume_df(stocks, current_date, end_dates, periods, index_returns,
                     print(f"Stock: {stock} ; Return multiple against {index_shortName}: {round(return_mul, 2)}\n")
                 
                 # Calculate the moving averages of volume
-                df["Volume SMA 5"] = SMA(df, 5, column="Volume")
-                df["Volume SMA 20"] = SMA(df, 20, column="Volume")
+                df.loc[:, "Volume SMA 5"] = SMA(df, 5, column="Volume")
+                df.loc[:, "Volume SMA 20"] = SMA(df, 20, column="Volume")
                 volume_smas[stock] = {"Volume SMA 5": df["Volume SMA 5"].iloc[-1], "Volume SMA 20": df["Volume SMA 20"].iloc[-1]}
 
             except Exception as e:
@@ -212,7 +212,7 @@ def get_volatility(data, periods=[20, 60], column="Close"):
     data_copy = data.copy()
 
     # Calculate the percent change of the stock
-    data_copy["Percent Change"] = data_copy[column].pct_change()
+    data_copy.loc[:, "Percent Change"] = data_copy[column].pct_change()
 
     # Calculate the volatility
     for period in periods:
