@@ -62,8 +62,8 @@ def check_conds_tech(index_name, df):
     periods = [5, 20, 50, 200]
 
     for i in periods:
-        df[f"SMA {str(i)}"] = SMA(df, i)
-        df[f"EMA {str(i)}"] = EMA(df, i)
+        df.loc[f"SMA {str(i)}"] = SMA(df, i)
+        df.loc[f"EMA {str(i)}"] = EMA(df, i)
 
     # Calculate the moving averages
     SMA_5 = df["SMA 5"].iloc[-1]
