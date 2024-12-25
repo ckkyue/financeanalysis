@@ -545,9 +545,10 @@ def main():
 
     # Get the current date
     current_date = get_current_date(start, index_name)
+    current_date = "2024-12-25"
 
     # Create the end dates
-    end_dates = generate_end_dates(7, current_date)
+    end_dates = generate_end_dates(7, current_date, interval="1w")
     end_dates.append(current_date)
     # end_dates = [current_date]
 
