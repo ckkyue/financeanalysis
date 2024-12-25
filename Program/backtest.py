@@ -158,7 +158,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     # Calculate overall stock percent change and cumulative return
     index_df["Stock Percent Change"] = 0
     for i in range(top):
-        index_df[f"Stock {i + 1} Percent Change"].fillna(0, inplace=True)
+        index_df.fillna({f"Stock {i + 1} Percent Change": 0}, inplace=True)
         index_df["Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"]
     index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
@@ -949,7 +949,6 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks
     RS = 90
-    factors = [1, 1, 1]
     backtest = True
 
     # Index
@@ -967,40 +966,48 @@ def main():
     factors_group = [[i / 20, j / 20, k / 20] 
                      for i, j, k in itertools.product(range(21), repeat=3) 
                      if i + j + k == 20]
+    
+    # Number of stocks to be selected
+    top = 10
 
-    # Create the stock dictionary for all factor comnbinations
-    for factors in tqdm(factors_group):
-        create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
+    recreate_stock_dict = False
+    if recreate_stock_dict:
+        # Create the stock dictionary for all factor comnbinations
+        for factors in tqdm(factors_group):
+            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
     evaluate_momentum = True
     if evaluate_momentum:
         # Calculate the equity curve for a momentum strategy
-        top = 5
+        factors = [0.15, 0.05, 0.8]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=top)
-                                         
-        # # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
-        # create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, top=top)
-
-        # Plot the equity curve of stocks of the momentum strategy
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, top, save=True)
 
-        # # Save the statistics of all factors of the momentum strategy
-        # save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, top)
+        # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
+        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, top=top)
 
-        # # Get the infix
-        # infix = get_infix("^GSPC", index_dict, True)
+        # Plot the equity curve of stocks of the momentum strategy
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, top, plot_group=True, save=True)
 
-        # # Load the statistics of all factor combinations
-        # factors_stats = np.load(f"Backtest/{infix}factors_statstop{top}.npy", allow_pickle=True)
+        # Save the statistics of all factors of the momentum strategy
+        save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, top)
 
-        # # Get the price data of the index
-        # index_df = get_df(index_name, current_date)
+    show_momentum_stats = False
+    if show_momentum_stats:
+        # Get the infix
+        infix = get_infix("^GSPC", index_dict, True)
 
-        # # Filter the data
-        # index_df = index_df[end_dates[0] : end_dates[-1]]
+        # Load the statistics of all factor combinations
+        factors_stats = np.load(f"Backtest/{infix}factors_statstop{top}.npy", allow_pickle=True)
 
-        # # Compare the statistics between the index and stocks selected by the momentum strategy
-        # compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, top, save=True)
+        # Get the price data of the index
+        index_df = get_df(index_name, current_date)
+
+        # Filter the data
+        index_df = index_df[end_dates[0] : end_dates[-1]]
+
+        # Compare the statistics between the index and stocks selected by the momentum strategy
+        compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, top, save=True)
     
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
