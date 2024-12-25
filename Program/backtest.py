@@ -969,7 +969,7 @@ def main():
                      if i + j + k == 20]
     
     # Number of stocks to be selected
-    top = 5
+    top = 10
 
     recreate_stock_dict = False
     if recreate_stock_dict:
@@ -980,7 +980,7 @@ def main():
     evaluate_momentum = True
     if evaluate_momentum:
         # Calculate the equity curve for a momentum strategy
-        factors = [0.0, 0.0, 1.0]
+        factors = [0.15, 0.05, 0.8]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=top)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, top, save=True)
 
