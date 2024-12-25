@@ -43,8 +43,8 @@ def stocks_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_
 
     # Calculate the moving averages
     for i in [period_short, period_long]:
-        index_df[f"SMA {str(i)}"] = SMA(index_df, i)
-        index_df[f"EMA {str(i)}"] = EMA(index_df, i)
+        index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
+        index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
 
     # Run the KNN model if parameters are provided
     if knn_params is not None:
