@@ -497,7 +497,7 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
         df = pd.read_excel(filename)
 
         # Calculate the EM rating
-        df = EM_rating(df, factors)
+        df = EM_rating(index_name, df, factors)
 
         # Extract the number of stocks
         stocks_num = df.shape[0]
