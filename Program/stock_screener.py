@@ -472,7 +472,7 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Initialize stock_dict
+    # Initialise an empty dictionary to store the selected stocks
     stock_dict = {}
 
     # Define the result folder
@@ -481,11 +481,10 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
     else:
         result_folder = "Result"
 
-    # Check if stock_dict exists
+    # Load the stock dictionary if it exists
     stock_dict_filename = os.path.join(result_folder, f"Stock dict/{infix}stock_dict{factors}.txt")
     if os.path.isfile(stock_dict_filename):
         with open(stock_dict_filename, "r") as file:
-            # Retrieve the content of the stock_dict as a dictionary
             stock_dict = ast.literal_eval(file.read())
 
     # Iterate over all end dates
@@ -503,20 +502,18 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
         # Extract the number of stocks
         stocks_num = df.shape[0]
 
-        # Return None if the number of stocks is 0
+        # Store top stocks or None if no stocks found
         if stocks_num == 0:
             stock_dict[end_date] = None
         else:
-            # Extract the stocks with top EM ratings
             top_stocks = df.head(top)["Stock"].tolist()
             stock_dict[end_date] = top_stocks
 
-        # Sort tock_dict based on the ascending order of dates
+        # Sort stock_dict by date
         stock_dict = dict(sorted(stock_dict.items(), key=lambda x: dt.datetime.strptime(x[0], "%Y-%m-%d")))
 
-    # Open the file in write mode
+    # Write the stock_dict to a file
     with open(stock_dict_filename, "w") as file:
-        # Write the dictionary string to the file
         file.write(str(stock_dict))
 
 # Main function
@@ -552,7 +549,6 @@ def main():
     # Create the end dates
     end_dates = generate_end_dates(7, current_date)
     end_dates.append(current_date)
-
     # end_dates = [current_date]
 
     # Stock selection

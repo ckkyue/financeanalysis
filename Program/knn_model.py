@@ -1,5 +1,5 @@
 # Imports
-from backtest import calculate_stats, stocks_equity_curve
+from backtest import calculate_stats, momentum_equity_curve
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
@@ -126,13 +126,17 @@ def main():
     start = dt.datetime.now()
 
     # Variables
-    HKEX_all = False
+    HKEX_all = True
     NASDAQ_all = True
-    factors = [0.65, 0.05, 0.3]
+    period_hk = 60 # Period for HK stocks
+    period_us = 252 # Period for US stocks
+    RS = 90
+    factors = [1, 1, 1]
+    backtest = True
 
     # Index
     index_name = "^GSPC"
-    index_dict = {"^GSPC": "S&P 500", "QQQ": "QQQ"}
+    index_dict = {"^HSI": "HKEX", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
@@ -141,14 +145,13 @@ def main():
     current_date = get_current_date(start, index_name)
 
     # Create the end dates
-    end_dates = generate_end_dates(5, current_date)[:-1]
-    end_dates.append("2024-07-10")
+    end_dates = generate_end_dates(7, current_date)
+    end_dates.append(current_date)
 
     # Create a group of factors
-    factors_group = []
-    for i, j, k in itertools.product(range(20 + 1), repeat=3):
-        if i + j + k == 20:
-            factors_group.append([i / 20, j / 20, k / 20])
+    factors_group = [[i / 20, j / 20, k / 20] 
+                     for i, j, k in itertools.product(range(21), repeat=3) 
+                     if i + j + k == 20]
 
     # Parameters of the KNN model
     top = 5
@@ -160,7 +163,7 @@ def main():
     knn_params = {"k": k, "lookback": lookback, "features": features}
 
     # Get the equity curve of the KNN model
-    index_df, cm_test_knn_index, cm_test_lknn_index = stocks_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=knn_params)
+    index_df, cm_test_knn_index, cm_test_lknn_index = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=knn_params)
         
     # Plot the equity curve of the KNN model
     # Create a figure
