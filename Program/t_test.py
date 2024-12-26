@@ -67,7 +67,7 @@ def main():
     for stats in factors_stats:
         factors = stats[0]
         mvp_factor, eps_yoy_factor, eps_qoq_factor = factors
-        if mvp_factor < 0.5:
+        if mvp_factor <= 0.5:
             CAGR = stats[1][1][2] * 100
             sharpe_ratio = stats[1][1][4]
             sortino_ratio = stats[1][1][5]

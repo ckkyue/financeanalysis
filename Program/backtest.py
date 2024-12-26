@@ -31,15 +31,15 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     - factors (list): Factors to consider in the strategy.
     - top (int): Number of top stocks to select for the strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
-    - period_short (int): Short period for SMA/EMA calculations. Defaults to 50.
+    - period_short (int): Short period for SMA/EMA calculations. Defaults to 1.
     - period_long (int): Long period for SMA/EMA calculations. Defaults to 200.
     - SMA_crossover (bool): Whether to use SMA crossover rules. Defaults to False.
     - leverage (float): Leverage factor for stock positions. Defaults to 1.
     - fee_rate (float): Transaction fee rate. Defaults to 0.001.
 
     Returns:
-    - index_df (Dataframe): Contains the equity curve and performance metrics.
-    - Optional: Confusion matrices for KNN models if 'knn_params' is provided.
+    - index_df (dataframe): Contains the equity curve and performance metrics.
+    - Optional: Confusion matrices for KNN models if "knn_params" is provided.
     """
     
     # Get the infix
@@ -202,7 +202,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     - fee_rate (float): Transaction fee rate. Defaults to 0.001.
 
     Returns:
-    - None
+    - None: It saves a dictionary.
     """
     
     # Get the infix
@@ -236,7 +236,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
 def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, years, top, plot_group=False, save=False):
     """
     Inputs:
-    - index_df (Dataframe): Contains the equity curve and performance metrics.
+    - index_df (dataframe): Contains the equity curve and performance metrics.
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
@@ -244,11 +244,11 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     - factors_group (list): List of factor combinations to evaluate.
     - years (int): Number of years for the analysis.
     - top (int): Number of top stocks to select for the strategy.
-    - plot_group (bool): Whether to plot equity curves for all factor combinations.
-    - save (bool): Whether to save the plot as a file.
+    - plot_group (bool): Whether to plot equity curves for all factor combinations. Default to False.
+    - save (bool): Whether to save the plot as a file. Default to False.
 
     Returns:
-    - None
+    - None: It plots an equity curve.
     """
 
     # Get the infix
@@ -362,10 +362,10 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, years, top, x_values, y_
     - z_values (array-like): Values for the z-axis.
     - z_index (array-like): Index values for the z-axis.
     - z_label (str): Label for the z-axis.
-    - save (bool): Whether to save the plot as a file.
+    - save (bool): Whether to save the plot as a file. Default to False.
 
     Returns:
-    - None
+    - None: It creates a 3D plot.
     """
 
     # Get the infix
@@ -460,7 +460,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years
     - reanalyse (bool): If True, reanalyze and overwrite existing data. Default to False.
 
     Returns:
-    - None
+    - None: It saves the statistics as a .pkl file.
     """
 
     # Get the infix
@@ -506,7 +506,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years
 def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, years, top, save=False):
     """
     Inputs:
-    - index_df (Dataframe): Dataframe containing index data for analysis.
+    - index_df (dataframe): Dataframe containing index data for analysis.
     - index_name (str): Name of the index being analyzed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
@@ -582,8 +582,8 @@ def get_equity(month_inv, years, returns, initial=10000, inflation=0.03):
     - month_inv (float): Monthly investment amount.
     - years (int): Number of years to calculate equity for.
     - returns (array-like): Array of monthly returns.
-    - initial (float): Initial equity amount (default is 10,000).
-    - inflation (float): Annual inflation rate (default is 3%).
+    - initial (float): Initial equity amount. Default to 10000.
+    - inflation (float): Annual inflation rate. Default to 0.03.
 
     Returns:
     - equity_arr (np.ndarray): Array of equity values over the specified period.
@@ -618,10 +618,10 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - month_inv (float): Monthly investment amount.
     - years (int): Number of years to calculate equity for.
-    - returns_arr (array-like): Array of returns and statistics (e.g., mean, SD).
+    - returns_arr (array-like): Array of returns and statistics.
 
     Returns:
-    - None
+    - None: It plots an equity curve.
     """
     
     # Get the equity curve based on provided parameters
@@ -677,10 +677,10 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
 def record_asset(df):
     """
     Inputs:
-    - df (Dataframe): DataFrame containing "Buy" and "Sell" signals.
+    - df (dataframe): DataFrame containing "Buy" and "Sell" signals.
 
     Returns:
-    - df (Dataframe): The modified DataFrame with "Asset Buy" and "Asset Sell" columns.
+    - df (dataframe): The modified DataFrame with "Asset Buy" and "Asset Sell" columns.
     """
     
     # Initialise columns for asset buy and sell positions
@@ -710,7 +710,7 @@ def extract_position(s):
     - s (Series): Series of asset signals (1 for position taken, 0 otherwise).
 
     Returns:
-    - Tuple of numpy arrays: (start_indices, end_indices)
+    - tuple: (start_indices, end_indices)
     """
 
     # Determine start indices where position is taken
@@ -731,9 +731,9 @@ def extract_position(s):
 def calculate_stats(df, years, name=None):
     """
     Inputs:
-    - df (Dataframe): DataFrame with a "Close" column.
+    - df (dataframe): Dataframe with a "Close" column.
     - years (int): Number of years for CAGR and other metrics.
-    - name (str): Name of the strategy. Default is None.
+    - name (str): Name of the strategy. Default to None.
 
     Returns:
     - tuple: (yearly returns, stats array)
@@ -797,11 +797,11 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     """
     Inputs:
     - stock (str): Name of the stock being analysed.
-    - df (Dataframe): Dataframe containing strategy returns and buy/sell signals.
-    - column (str): Column name for cumulative strategy return (default is "Cumulative Strategy Return").
+    - df (dataframe): Dataframe containing strategy returns and buy/sell signals.
+    - column (str): Column name for cumulative strategy return. Default to "Cumulative Strategy Return").
 
     Returns:
-    - None: The function displays the plot.
+    - None: It plots an equity curve.
     """
 
     # Create a figure
@@ -839,13 +839,13 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
 def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
     """
     Inputs:
-    - df (Dataframe): Dataframe containing price data.
-    - period_short (int): Short period for SMA/EMA calculations. Defaults to 1.
-    - period_long (int): Long period for SMA/EMA calculations. Defaults to 200.
-    - column (str): Column name for price data (default is "Close").
+    - df (dataframe): Dataframe containing price data.
+    - period_short (int): Short period for SMA/EMA calculations. Default to 1.
+    - period_long (int): Long period for SMA/EMA calculations. Default to 200.
+    - column (str): Column name for price data. Default to "Close".
 
     Returns:
-    - Dataframe: Modified Dataframe with "Buy" and "Sell" signals.
+    - df (dataframe): Modified Dataframe with "Buy" and "Sell" signals.
     """
 
     # Calculate the SMA
@@ -894,14 +894,14 @@ def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
 def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
     """
     Inputs:
-    - df (Dataframe): Dataframe containing price data.
-    - period (int): Look-back period for RSI calculation (default is 14).
-    - column (str): Column name for price data (default is "Close").
-    - oversold (int): RSI level indicating oversold conditions (default is 30).
-    - overbought (int): RSI level indicating overbought conditions (default is 70).
+    - df (dataframe): Dataframe containing price data.
+    - period (int): Look-back period for RSI calculation. Default to 14.
+    - column (str): Column name for price data. Default to "Close".
+    - oversold (float): RSI level indicating oversold conditions. Default to 30.
+    - overbought (float): RSI level indicating overbought conditions. Default to 70.
 
     Returns:
-    - Dataframe: Modified Dataframe with "Buy" and "Sell" signals.
+    - df (dataframe): Modified Dataframe with "Buy" and "Sell" signals.
     """
 
     # Calculate the RSI
@@ -949,16 +949,16 @@ def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
 def mfisma_zscore_strategy(df, mfi_period=14, sma_period=50, zscore_period=252, column="Close", oversold=-2, overbought=2):
     """
     Inputs:
-    - df (Dataframe): Dataframe containing price data.
-    - mfi_period (int): Look-back period for MFI calculation (default is 14).
-    - sma_period (int): SMA period for calculating the ratio between close and SMA (default is 200).
-    - zscore_period (int): Look-back period for z-score calculation (default is 252).
-    - column (str): Column name for price data (default is "Close").
-    - oversold (float): Z-score level indicating oversold conditions (default is -2).
-    - overbought (float): Z-score level indicating overbought conditions (default is 2).
+    - df (dataframe): Dataframe containing price data.
+    - mfi_period (int): Look-back period for MFI calculation. Default to 14.
+    - sma_period (int): SMA period for calculating the ratio between close and SMA. Default to 50.
+    - zscore_period (int): Look-back period for z-score calculation. Default to 252.
+    - column (str): Column name for price data. Default to "Close".
+    - oversold (float): Z-score level indicating oversold conditions. Default to -2.
+    - overbought (float): Z-score level indicating overbought conditions. Default to 2.
 
     Returns:
-    - Dataframe: Modified Dataframe with "Buy" and "Sell" signals.
+    - df (dataframe): Modified Dataframe with "Buy" and "Sell" signals.
     """
 
     # Calculate the MFI
@@ -1019,13 +1019,13 @@ def test_strategy(stock, df, end_date, years, fee_rate=0.001):
     """
     Inputs:
     - stock (str): Name of the stock being analysed.
-    - df (Dataframe): Dataframe containing price data.
+    - df (dataframe): Dataframe containing price data.
     - end_date (str): The end date for the strategy testing in "YYYY-MM-DD" format.
     - years (int): Number of years to test the strategy.
-    - fee_rate (float): Transaction fee rate. Defaults to 0.001.
+    - fee_rate (float): Transaction fee rate. Default to 0.001.
 
     Returns:
-    - None: The function performs calculations and displays results.
+    - None: It performs calculations and plots an equity curve.
     """
 
     # Calculate the start date based on the end date and the number of years
@@ -1126,7 +1126,7 @@ def main():
         # Save the statistics of all factors of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years, top)
 
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Get the infix
         infix = get_infix("^GSPC", index_dict, True)
