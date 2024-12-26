@@ -19,7 +19,7 @@ from technicals import *
 from tqdm import tqdm
 
 # Calculate the equity curve for a momentum strategy
-def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=5, knn_params=None, period_short=20, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
+def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=None, period_short=1, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
     """
     Parameters:
     - end_dates (list): List of end dates for backtesting.
@@ -112,7 +112,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
         else:
             sma_cond = True
-        factor = 1 if sma_cond else 0.5
+        factor = 1 if sma_cond else 0
 
         # Initialise stock count
         stocks_num = 0
@@ -182,7 +182,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     return index_df
 
 # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
-def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top=5, knn_params=None, period_short=50, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
+def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top, knn_params=None, period_short=1, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
     """
     Parameters:
     - end_dates (list): List of end dates for backtesting.
@@ -219,7 +219,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Iterate over all factor combinations
     for factors in tqdm(factors_group):
         # Get the equity curve for the current combination of factors
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=top, knn_params=knn_params, period_short=period_short, period_long=period_long, SMA_crossover=SMA_crossover, leverage=leverage, fee_rate=fee_rate)
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=knn_params, period_short=period_short, period_long=period_long, SMA_crossover=SMA_crossover, leverage=leverage, fee_rate=fee_rate)
 
         # Convert the list of factors to a tuple for dictionary key
         factors_tuple = tuple(factors)
@@ -490,7 +490,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years
             index_df = momentum_dict[factors_tuple]
 
             # Calculate statistics for the equity curve
-            stats = calculate_stats(index_df, len(index_df) / 252, "stock")
+            stats = calculate_stats(index_df, len(index_df) / 252, name="stock")
             
             # Store the factors and their corresponding statistics in the array
             factors_stats[i, 0] = np.array(factors)
@@ -526,22 +526,25 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     sortino_ratio_values = []
 
     # Calculate statistics for the index
-    stats_index = calculate_stats(index_df, len(index_df) / 252, "index")[1]
+    stats_index = calculate_stats(index_df, len(index_df) / 252)[1]
     CAGR_index = stats_index[2]
     sharpe_ratio_index = stats_index[4]
     sortino_ratio_index = stats_index[5]
     
     # Iterate over the statistics of all factors to extract values
     for stats in factors_stats:
-        x, y, _ = stats[0]
-        CAGR = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
-        sharpe_ratio = stats[1][1][4]
-        sortino_ratio = stats[1][1][5]
-        x_values.append(x)
-        y_values.append(y)
-        CAGR_values.append(CAGR)
-        sharpe_ratio_values.append(sharpe_ratio)
-        sortino_ratio_values.append(sortino_ratio)
+        factors = stats[0]
+        mvp_factor, eps_yoy_factor, eps_qoq_factor = factors
+        if mvp_factor < 0.5:
+            x, y, _ = stats[0]
+            CAGR = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
+            sharpe_ratio = stats[1][1][4]
+            sortino_ratio = stats[1][1][5]
+            x_values.append(x)
+            y_values.append(y)
+            CAGR_values.append(CAGR)
+            sharpe_ratio_values.append(sharpe_ratio)
+            sortino_ratio_values.append(sortino_ratio)
 
     # Calculate the proportion of CAGRs higher than the index's CAGR
     CAGR_mean = np.mean(CAGR_values)
@@ -723,58 +726,58 @@ def extract_position(s):
         
     return np.array(start_index), np.array(end_index)
 
-# Calculate various financial statistics for a given DataFrame
-def calculate_stats(df, years, name):
+# Calculate various financial statistics for a given dataframe
+def calculate_stats(df, years, name=None):
     """
     Parameters:
-    - df (DataFrame): DataFrame containing financial data with a 'Close' column.
-    - years (int): Number of years over which to calculate CAGR and other metrics.
-    - name (str): Name of the strategy or index being evaluated.
+    - df (Dataframe): DataFrame with a "Close" column.
+    - years (int): Number of years for CAGR and other metrics.
+    - name (str): Name of the strategy. Default is None.
 
     Returns:
     - tuple: (yearly returns, stats array)
     """
 
-    # Capitalise the name for consistency
-    if name[0].islower():
-        name = name.capitalize()
+    # Capitalize name for consistency
+    name = name.capitalize() if name and name[0].islower() else name
 
-    # Calculate the percent change of the index
-    df["Index Percent Change"] = df["Close"].pct_change()
+    # Calculate the percent change and cumulative return
+    df["Percent Change"] = df["Close"].pct_change()
+    df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
 
-    # Calculate the cumulative return of the index
-    df["Cumulative Index Return"] = (df["Index Percent Change"] + 1).cumprod()
-
-    # Calculate strategy-specific returns and cumulative returns
+    # Strategy-specific calculations and calculate the total return
     if name == "Strategy":
-        df[f"{name} Percent Change"] = (((df["Index Percent Change"] - df["Fee"]) * df["Asset Buy"])).fillna(0)
+        df[f"{name} Percent Change"] = ((df["Percent Change"] - df["Fee"]) * df["Asset Buy"]).fillna(0)
         df[f"Cumulative {name} Return"] = (df[f"{name} Percent Change"] + 1).cumprod()
-    
-    # Calculate total return, peak return, and CAGR
-    total_return = df[f"Cumulative {name} Return"].iloc[-1]
-    return_peak = df[f"Cumulative {name} Return"].max()
+        total_return = df[f"Cumulative {name} Return"].iloc[-1]
+    else:
+        total_return = df["Cumulative Return"].iloc[-1]
+
+    # Calculate peak return and CAGR
+    return_peak = df[f"Cumulative {name} Return"].max() if name else df["Cumulative Return"].max()
     CAGR = total_return ** (1 / years) - 1
 
     # Calculate the Sharpe ratio
     risk_free_rate = 0 # Assuming a risk-free rate of 0 for simplicity
-    volatility = df[f"{name} Percent Change"].std() * (252 ** 0.5)
-    sharpe_ratio = (df[f"{name} Percent Change"].mean() * 252 - risk_free_rate) / volatility
+    percent_change_label = f"{name} Percent Change" if name else "Percent Change"
+    return_mean = df[percent_change_label].mean() * 252
+    volatility = df[percent_change_label].std() * (252 ** 0.5)
+    sharpe_ratio = (return_mean - risk_free_rate) / volatility if volatility != 0 else np.nan
 
     # Calculate the Sortino ratio
-    downside_deviation = df[f"{name} Percent Change"].where(df[f"{name} Percent Change"] < 0).std()
-    sortino_ratio = (df[f"{name} Percent Change"].mean() * 252 - risk_free_rate) / (downside_deviation * (252 ** 0.5))
+    downside_deviation = df[percent_change_label].where(df[percent_change_label] < 0).std()
+    sortino_ratio = (return_mean - risk_free_rate) / (downside_deviation * (252 ** 0.5)) if downside_deviation != 0 else np.nan
 
     # Calculate the Calmar ratio
-    max_drawdown = (df[f"Cumulative {name} Return"] / df[f"Cumulative {name} Return"].cummax() - 1).min()
+    max_drawdown = (df[f"Cumulative {name} Return"] / df[f"Cumulative {name} Return"].cummax() - 1).min() if name else \
+                    (df["Cumulative Return"] / df["Cumulative Return"].cummax() - 1).min()
     calmar_ratio = (CAGR / abs(max_drawdown)) if max_drawdown != 0 else np.nan
 
-    # Retrieve trading dates at 1-year intervals for annual return calculations
+    # Calculate annual returns
     dates = [df.index[df.index.searchsorted(date, side="right") - 1] for date in 
-             [df.index[-1] - relativedelta(years=i) for i in range(0, round(years))]][::-1]
-
-    # Retrieve corresponding closing prices for the calculated dates
-    closes = np.array(df.loc[dates, f"Cumulative {name} Return"].values)
-    returns = np.diff(closes) / closes[:-1] # Calculate annual returns
+            [df.index[-1] - relativedelta(years=i) for i in range(0, round(years))]][::-1]
+    closes = df.loc[dates, f"Cumulative {name} Return" if name else "Cumulative Return"].values
+    returns = np.diff(closes) / closes[:-1]
 
     # Calculate statistics of yearly returns
     returns_mean = np.mean(returns)
@@ -789,11 +792,10 @@ def calculate_stats(df, years, name):
     return returns, stats
 
 # Plot the equity curve of a given strategy
-def plot_strategy_equity_curve(index_name, index_dict, df, column="Cumulative Strategy Return"):
+def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     """
     Parameters:
-    - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective descriptions.
+    - stock (str): Name of the stock being analysed.
     - df (Dataframe): Dataframe containing strategy returns and buy/sell signals.
     - column (str): Column name for cumulative strategy return (default is "Cumulative Strategy Return").
 
@@ -814,7 +816,7 @@ def plot_strategy_equity_curve(index_name, index_dict, df, column="Cumulative St
     plt.scatter(df.index[df["Sell"]], df[column][df["Sell"]], marker="v", color="red", label="Sell")
 
     # Set the title
-    plt.title(f"Equity curve for {index_dict[index_name]}")
+    plt.title(f"Equity curve for {stock}")
     
     # Set the labels
     plt.xlabel("Date")
@@ -831,6 +833,61 @@ def plot_strategy_equity_curve(index_name, index_dict, df, column="Cumulative St
 
     # Show the plot
     plt.show()
+
+# SMA crossover strategy implementation
+def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
+    """
+    Parameters:
+    - df (Dataframe): Dataframe containing price data.
+    - period_short (int): Short period for SMA/EMA calculations. Defaults to 1.
+    - period_long (int): Long period for SMA/EMA calculations. Defaults to 200.
+    - column (str): Column name for price data (default is "Close").
+
+    Returns:
+    - Dataframe: Modified Dataframe with "Buy" and "Sell" signals.
+    """
+
+    # Calculate the SMA
+    df[f"SMA {period_short}"] = SMA(df, period_short, column=column)
+    df[f"SMA {period_long}"] = SMA(df, period_long, column=column)
+
+    # Identify buy and sell conditions based on SMA crossover
+    buy_conds = (df[f"SMA {period_short}"] >= df[f"SMA {period_long}"]) & (df[f"SMA {period_short}"].shift(1) < df[f"SMA {period_long}"].shift(1))
+    sell_conds = (df[f"SMA {period_short}"] <= df[f"SMA {period_long}"]) & (df[f"SMA {period_short}"].shift(1) > df[f"SMA {period_long}"].shift(1))
+
+    # Extract buy and sell indices
+    buy_indices = df[buy_conds].index
+    sell_indices = df[sell_conds].index
+    buy_indices_int, sell_indices_int = [], []
+
+    # Generate buy/sell signals
+    if len(buy_indices) > 0 and len(sell_indices) > 0:
+        next_index = "buy" if buy_indices[0] < sell_indices[0] else "sell"
+
+        # Alternate between buying and selling based on the indices
+        while len(buy_indices) > 0 and len(sell_indices) > 0:
+            if next_index == "buy":
+                buy_indices_int.append(buy_indices[0])
+                buy_indices = buy_indices[1:]
+                # Remove sell indices that occur before the last buy
+                sell_indices = sell_indices[sell_indices > buy_indices_int[-1]]
+                next_index = "sell"
+            else:
+                sell_indices_int.append(sell_indices[0])
+                sell_indices = sell_indices[1:]
+                # Remove buy indices that occur before the last sell
+                buy_indices = buy_indices[buy_indices > sell_indices_int[-1]]
+                next_index = "buy"
+    else:
+        print("No buy/sell signal generated.")
+
+    # Assign the buy/sell signals to the dataframe
+    df["Buy"] = False
+    df["Sell"] = False
+    df.loc[buy_indices_int, "Buy"] = True
+    df.loc[sell_indices_int, "Sell"] = True
+
+    return df
 
 # RSI strategy implementation
 def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
@@ -887,14 +944,82 @@ def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
 
     return df
 
-# Test the strategy
-def test_strategy(end_date, index_df, index_name, index_dict, years, fee_rate=0.001):
+# z-score strategy implementation
+def mfisma_zscore_strategy(df, mfi_period=14, sma_period=50, zscore_period=252, column="Close", oversold=-2, overbought=2):
     """
     Parameters:
+    - df (Dataframe): Dataframe containing price data.
+    - mfi_period (int): Look-back period for MFI calculation (default is 14).
+    - sma_period (int): SMA period for calculating the ratio between close and SMA (default is 200).
+    - zscore_period (int): Look-back period for z-score calculation (default is 252).
+    - column (str): Column name for price data (default is "Close").
+    - oversold (float): Z-score level indicating oversold conditions (default is -2).
+    - overbought (float): Z-score level indicating overbought conditions (default is 2).
+
+    Returns:
+    - Dataframe: Modified Dataframe with "Buy" and "Sell" signals.
+    """
+
+    # Calculate the MFI
+    df = MFI(df, period=mfi_period)
+
+    # Calculate the SMA
+    df[f"SMA {sma_period}"] = SMA(df, sma_period, column=column)
+
+    # Calculate the ratio of column to SMA
+    df[f"{column}/SMA{sma_period}"] = df[column] / df[f"SMA {sma_period}"] 
+    
+    # Calculate the product of MFI and ratio of column to SMA
+    df[f"MFI * {column}/SMA{sma_period}"] = df["MFI"] * df[f"{column}/SMA{sma_period}"]
+
+    # Calculate the z-score of the product
+    df = calculate_ZScore(df, f"MFI * {column}/SMA{sma_period}", zscore_period)
+
+    # Identify buy and sell conditions based on z-score levels
+    buy_conds = (df[f"MFI * {column}/SMA{sma_period} Z-Score"] <= oversold) & (df[f"MFI * {column}/SMA{sma_period} Z-Score"].shift(1) > oversold)
+    sell_conds = (df[f"MFI * {column}/SMA{sma_period} Z-Score"] >= overbought) & (df[f"MFI * {column}/SMA{sma_period} Z-Score"].shift(1) < overbought)
+
+    # Extract buy and sell indices
+    buy_indices = df[buy_conds].index
+    sell_indices = df[sell_conds].index
+    buy_indices_int, sell_indices_int = [], []
+
+    # Generate buy/sell signals
+    if len(buy_indices) > 0 and len(sell_indices) > 0:
+        next_index = "buy" if buy_indices[0] < sell_indices[0] else "sell"
+
+        # Alternate between buying and selling based on the indices
+        while len(buy_indices) > 0 and len(sell_indices) > 0:
+            if next_index == "buy":
+                buy_indices_int.append(buy_indices[0])
+                buy_indices = buy_indices[1:]
+                # Remove sell indices that occur before the last buy
+                sell_indices = sell_indices[sell_indices > buy_indices_int[-1]]
+                next_index = "sell"
+            else:
+                sell_indices_int.append(sell_indices[0])
+                sell_indices = sell_indices[1:]
+                # Remove buy indices that occur before the last sell
+                buy_indices = buy_indices[buy_indices > sell_indices_int[-1]]
+                next_index = "buy"
+    else:
+        print("No buy/sell signal generated.")
+
+    # Assign the buy/sell signals to the dataframe
+    df["Buy"] = False
+    df["Sell"] = False
+    df.loc[buy_indices_int, "Buy"] = True
+    df.loc[sell_indices_int, "Sell"] = True
+
+    return df
+
+# Test the strategy
+def test_strategy(stock, df, end_date, years, fee_rate=0.001):
+    """
+    Parameters:
+    - stock (str): Name of the stock being analysed.
+    - df (Dataframe): Dataframe containing price data.
     - end_date (str): The end date for the strategy testing in "YYYY-MM-DD" format.
-    - index_df (Dataframe): Dataframe containing index price data.
-    - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
     - years (int): Number of years to test the strategy.
     - fee_rate (float): Transaction fee rate. Defaults to 0.001.
 
@@ -902,41 +1027,38 @@ def test_strategy(end_date, index_df, index_name, index_dict, years, fee_rate=0.
     - None: The function performs calculations and displays results.
     """
 
-    # Apply the strategy to the index dataframe
-    index_df = RSI_strategy(index_df)
-
     # Calculate the start date based on the end date and the number of years
     start_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - relativedelta(years=years)).strftime("%Y-%m-%d")
 
     # Filter the data
-    index_df = index_df[start_date : end_date]
+    df = df[df.index >= start_date]
 
     # Count and print the number of buy and sell signals
-    print("Number of Buy signals:", index_df["Buy"].sum())
-    print("Number of Sell signals:", index_df["Sell"].sum())
+    print("Number of Buy signals:", df["Buy"].sum())
+    print("Number of Sell signals:", df["Sell"].sum())
 
     # Record the asset positions after buy/sell actions
-    index_df = record_asset(index_df)
+    df = record_asset(df)
     
     # Initialise the commission fee column
-    index_df["Fee"] = float(0)
+    df["Fee"] = float(0)
 
     # Extract buy and sell positions
-    buy_start, buy_end = extract_position(index_df["Asset Buy"])
-    sell_start, sell_end = extract_position(index_df["Asset Sell"])
+    buy_start, buy_end = extract_position(df["Asset Buy"])
+    sell_start, sell_end = extract_position(df["Asset Sell"])
 
     # Assign the fee to the appropriate positions
-    index_df["Fee"].loc[buy_start] = fee_rate
-    index_df["Fee"].loc[buy_end] = fee_rate
-    index_df["Fee"].loc[sell_start] = fee_rate
-    index_df["Fee"].loc[sell_end] = fee_rate
+    df["Fee"].loc[buy_start] = fee_rate
+    df["Fee"].loc[buy_end] = fee_rate
+    df["Fee"].loc[sell_start] = fee_rate
+    df["Fee"].loc[sell_end] = fee_rate
 
     # Print the statistics of the strategy
     print(f"\nStatistics of the strategy over the past {years} year{'s' if years > 1 else ''}:")
-    print(calculate_stats(index_df, years, "strategy")[1])
+    print(calculate_stats(df, years, name="strategy")[1])
 
     # Plot the equity curve of the strategy
-    plot_strategy_equity_curve(index_name, index_dict, index_df)
+    plot_strategy_equity_curve(stock, df)
 
 # Main function
 def main():
@@ -967,7 +1089,7 @@ def main():
     current_date = get_current_date(start, index_name)
 
     # Create the end dates
-    years = 7
+    years = 5
     end_dates = generate_end_dates(years, current_date)
     end_dates.append(current_date)
 
@@ -989,13 +1111,13 @@ def main():
     if plot_momentum_equity_curve_single:
         # Calculate the equity curve for a momentum strategy
         factors = [0.15, 0.05, 0.8]
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=top)
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, years, top)
 
     evaluate_momentum = False
     if evaluate_momentum:
         # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
-        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top=top)
+        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top)
 
         # Plot the equity curve of stocks of the momentum strategy
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, years, top, plot_group=True, save=True)
@@ -1031,11 +1153,15 @@ def main():
 
     # Plot the equity curve of the index
     years = 25
-    returns_arr = calculate_stats(index_df, years, "index")
+    returns_arr = calculate_stats(index_df, years)
     plot_index_equity_curve(index_name, index_dict, 10000, years, returns_arr)
 
+    # Get the price data of bitcoin
+    btc_df = get_df("BTC-USD", current_date)
+    btc_df = SMA_strategy(btc_df)
+
     # Test the strategy
-    test_strategy(current_date, index_df, index_name, index_dict, years)
+    test_strategy("BTC-USD", btc_df, current_date, 10)
 
     # Print the end time and total runtime
     end = dt.datetime.now()

@@ -66,7 +66,7 @@ def main():
     # Iterate over all factors
     for stats in factors_stats:
         factors = stats[0]
-        mvp_factor = factors[0]
+        mvp_factor, eps_yoy_factor, eps_qoq_factor = factors
         if mvp_factor < 0.5:
             CAGR = stats[1][1][2] * 100
             sharpe_ratio = stats[1][1][4]
@@ -76,7 +76,7 @@ def main():
             sortino_ratio_values.append(sortino_ratio)
 
     # Calculate the CAGR, Sharpe ratio and Sortino ratio values of the index
-    stats_index = calculate_stats(index_df, len(index_df) / 252, "index")[1]
+    stats_index = calculate_stats(index_df, len(index_df) / 252)[1]
     CAGR_index = stats_index[2] * 100
     print(f"CAGR of index: {CAGR_index:.3e}.")
     sharpe_ratio_index = stats_index[4]

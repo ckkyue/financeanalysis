@@ -201,7 +201,7 @@ def main():
     plt.show()
 
     # Calculate the statistics of the Lorentzian KNN model
-    returns, stats = calculate_stats(index_df, len(index_df) / 252, "LKNN Stock")
+    returns, stats = calculate_stats(index_df, len(index_df) / 252, name="LKNN Stock")
     total_return_stock = stats[0]
     return_peak = stats[1]
     CAGR_stock = stats[2]
