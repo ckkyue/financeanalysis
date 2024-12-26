@@ -75,7 +75,7 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
                 month_start = current_date_int.replace(day=1)
                 month_end = month_start + relativedelta(months=1, days=-1)
                 first_trading_date = df.loc[(df.index >= month_start) & (df.index <= month_end)].index.min()
-            else:
+            elif interval == "1w":
                 week_start = current_date_int
                 week_end = week_start + relativedelta(weeks=1, days=-1)
                 first_trading_date = df.loc[(df.index >= week_start) & (df.index <= week_end)].index.min()

@@ -536,7 +536,7 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks
     RS = 90
-    factors = [1, 1, 1]
+    factors = [0.15, 0.05, 0.8]
     backtest = True
 
     # Index
