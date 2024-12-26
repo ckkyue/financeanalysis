@@ -19,7 +19,7 @@ from technicals import *
 from tqdm import tqdm
 
 # Calculate the equity curve for a momentum strategy
-def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=5, knn_params=None, period_short=20, period_long=200, SMA_crossover=False, QQQE=False, leverage=1, fee_rate=0.001):
+def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=5, knn_params=None, period_short=20, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
     """
     Parameters:
     - end_dates (list): List of end dates for backtesting.
@@ -65,15 +65,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
 
-    if QQQE:
-        qqqe_df = get_df("QQQE", current_date)
-
     # Calculate moving averages if required
-    if SMA_crossover and QQQE:
-        for i in [period_short, period_long]:
-            qqqe_df.loc[:, f"SMA {str(i)}"] = SMA(qqqe_df, i)
-            qqqe_df.loc[:, f"EMA {str(i)}"] = EMA(qqqe_df, i)
-    elif SMA_crossover:
+    if SMA_crossover:
         for i in [period_short, period_long]:
             index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
             index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
@@ -115,13 +108,11 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         stocks = stocks_list[i]
 
         # Determine if short SMA is above long SMA or if crossover check is disabled
-        if SMA_crossover and QQQE:
-            sma_cond = qqqe_df.loc[start_date, f"SMA {period_short}"] > qqqe_df.loc[start_date, f"SMA {period_long}"]
-        elif SMA_crossover:
+        if SMA_crossover:
             sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
         else:
             sma_cond = True
-        factor = 1 if sma_cond else 0
+        factor = 1 if sma_cond else 0.5
 
         # Initialise stock count
         stocks_num = 0
@@ -976,7 +967,7 @@ def main():
     current_date = get_current_date(start, index_name)
 
     # Create the end dates
-    years = 5
+    years = 7
     end_dates = generate_end_dates(years, current_date)
     end_dates.append(current_date)
 
@@ -994,7 +985,7 @@ def main():
         for factors in tqdm(factors_group):
             create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
-    plot_momentum_equity_curve_single = False
+    plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Calculate the equity curve for a momentum strategy
         factors = [0.15, 0.05, 0.8]
