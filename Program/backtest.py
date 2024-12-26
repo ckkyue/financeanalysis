@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+pd.options.mode.chained_assignment = None
 import pickle
 from plot import *
 from scipy.stats import skew, kurtosis
@@ -21,7 +22,7 @@ from tqdm import tqdm
 # Calculate the equity curve for a momentum strategy
 def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=None, period_short=1, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
     """
-    Parameters:
+    Inputs:
     - end_dates (list): List of end dates for backtesting.
     - current_date (str): The current date for the analysis.
     - index_name (str): Name of the index being analysed.
@@ -184,7 +185,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
 # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
 def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top, knn_params=None, period_short=1, period_long=200, SMA_crossover=False, leverage=1, fee_rate=0.001):
     """
-    Parameters:
+    Inputs:
     - end_dates (list): List of end dates for backtesting.
     - current_date (str): The current date for the analysis.
     - index_name (str): Name of the index being analysed.
@@ -234,7 +235,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
 # Plot the equity curve of stocks of the momentum strategy
 def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, years, top, plot_group=False, save=False):
     """
-    Parameters:
+    Inputs:
     - index_df (Dataframe): Contains the equity curve and performance metrics.
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
@@ -350,7 +351,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 # Plot the comparison between an index and stocks as a 3D graph
 def plot_comparison(index_name, index_dict, NASDAQ_all, years, top, x_values, y_values, z_values, z_index, z_label, save=False):
     """
-    Parameters:
+    Inputs:
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
@@ -449,7 +450,7 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, years, top, x_values, y_
 # Save the statistics of all factors of the momentum strategy
 def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years, top, reanalyse=False):
     """
-    Parameters:
+    Inputs:
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
@@ -504,7 +505,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years
 # Compare the statistics between the index and stocks selected by the momentum strategy
 def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, years, top, save=False):
     """
-    Parameters:
+    Inputs:
     - index_df (Dataframe): Dataframe containing index data for analysis.
     - index_name (str): Name of the index being analyzed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
@@ -577,7 +578,7 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
 # Calculate the equity based on monthly investments and returns
 def get_equity(month_inv, years, returns, initial=10000, inflation=0.03):
     """
-    Parameters:
+    Inputs:
     - month_inv (float): Monthly investment amount.
     - years (int): Number of years to calculate equity for.
     - returns (array-like): Array of monthly returns.
@@ -612,7 +613,7 @@ def get_equity(month_inv, years, returns, initial=10000, inflation=0.03):
 # Plot the equity curve for a given index based on monthly investments and returns
 def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_arr):
     """
-    Parameters:
+    Inputs:
     - index_name (str): Name of the index being analyzed.
     - index_dict (dict): Dictionary mapping index names to their respective names.
     - month_inv (float): Monthly investment amount.
@@ -675,7 +676,7 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
 # Record the asset after buy/sell signals
 def record_asset(df):
     """
-    Parameters:
+    Inputs:
     - df (Dataframe): DataFrame containing "Buy" and "Sell" signals.
 
     Returns:
@@ -687,10 +688,10 @@ def record_asset(df):
     df["Asset Sell"] = np.nan
     
     # Set buy and sell positions based on signals
-    df["Asset Buy"].loc[df["Buy"]] = 1
-    df["Asset Buy"].loc[df["Sell"]] = 0
-    df["Asset Sell"].loc[df["Sell"]] = 1
-    df["Asset Sell"].loc[df["Buy"]] = 0
+    df.loc[df["Buy"], "Asset Buy"] = 1
+    df.loc[df["Sell"], "Asset Buy"] = 0
+    df.loc[df["Sell"], "Asset Sell"] = 1
+    df.loc[df["Buy"], "Asset Sell"] = 0
     
     # Forward fill the asset positions and fill NaNs with 0
     df["Asset Buy"] = df["Asset Buy"].ffill().fillna(0)
@@ -705,7 +706,7 @@ def record_asset(df):
 # Extract positions from the asset signals
 def extract_position(s):
     """
-    Parameters:
+    Inputs:
     - s (Series): Series of asset signals (1 for position taken, 0 otherwise).
 
     Returns:
@@ -729,7 +730,7 @@ def extract_position(s):
 # Calculate various financial statistics for a given dataframe
 def calculate_stats(df, years, name=None):
     """
-    Parameters:
+    Inputs:
     - df (Dataframe): DataFrame with a "Close" column.
     - years (int): Number of years for CAGR and other metrics.
     - name (str): Name of the strategy. Default is None.
@@ -794,7 +795,7 @@ def calculate_stats(df, years, name=None):
 # Plot the equity curve of a given strategy
 def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     """
-    Parameters:
+    Inputs:
     - stock (str): Name of the stock being analysed.
     - df (Dataframe): Dataframe containing strategy returns and buy/sell signals.
     - column (str): Column name for cumulative strategy return (default is "Cumulative Strategy Return").
@@ -837,7 +838,7 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
 # SMA crossover strategy implementation
 def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
     """
-    Parameters:
+    Inputs:
     - df (Dataframe): Dataframe containing price data.
     - period_short (int): Short period for SMA/EMA calculations. Defaults to 1.
     - period_long (int): Long period for SMA/EMA calculations. Defaults to 200.
@@ -892,7 +893,7 @@ def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
 # RSI strategy implementation
 def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
     """
-    Parameters:
+    Inputs:
     - df (Dataframe): Dataframe containing price data.
     - period (int): Look-back period for RSI calculation (default is 14).
     - column (str): Column name for price data (default is "Close").
@@ -947,7 +948,7 @@ def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
 # z-score strategy implementation
 def mfisma_zscore_strategy(df, mfi_period=14, sma_period=50, zscore_period=252, column="Close", oversold=-2, overbought=2):
     """
-    Parameters:
+    Inputs:
     - df (Dataframe): Dataframe containing price data.
     - mfi_period (int): Look-back period for MFI calculation (default is 14).
     - sma_period (int): SMA period for calculating the ratio between close and SMA (default is 200).
@@ -1016,7 +1017,7 @@ def mfisma_zscore_strategy(df, mfi_period=14, sma_period=50, zscore_period=252, 
 # Test the strategy
 def test_strategy(stock, df, end_date, years, fee_rate=0.001):
     """
-    Parameters:
+    Inputs:
     - stock (str): Name of the stock being analysed.
     - df (Dataframe): Dataframe containing price data.
     - end_date (str): The end date for the strategy testing in "YYYY-MM-DD" format.
@@ -1048,10 +1049,10 @@ def test_strategy(stock, df, end_date, years, fee_rate=0.001):
     sell_start, sell_end = extract_position(df["Asset Sell"])
 
     # Assign the fee to the appropriate positions
-    df["Fee"].loc[buy_start] = fee_rate
-    df["Fee"].loc[buy_end] = fee_rate
-    df["Fee"].loc[sell_start] = fee_rate
-    df["Fee"].loc[sell_end] = fee_rate
+    df.loc[buy_start, "Fee"] = fee_rate
+    df.loc[buy_end, "Fee"] = fee_rate
+    df.loc[sell_start, "Fee"] = fee_rate
+    df.loc[sell_end, "Fee"] = fee_rate
 
     # Print the statistics of the strategy
     print(f"\nStatistics of the strategy over the past {years} year{'s' if years > 1 else ''}:")
