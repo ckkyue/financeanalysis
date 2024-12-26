@@ -994,14 +994,14 @@ def main():
         for factors in tqdm(factors_group):
             create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Calculate the equity curve for a momentum strategy
         factors = [0.15, 0.05, 0.8]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top=top)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, years, top)
 
-    evaluate_momentum = True
+    evaluate_momentum = False
     if evaluate_momentum:
         # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, years, top=top)
@@ -1012,7 +1012,7 @@ def main():
         # Save the statistics of all factors of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, years, top)
 
-    show_momentum_stats = False
+    show_momentum_stats = True
     if show_momentum_stats:
         # Get the infix
         infix = get_infix("^GSPC", index_dict, True)
