@@ -3,8 +3,8 @@ import datetime as dt
 from dateutil.relativedelta import relativedelta
 import numpy as np
 import pandas as pd
-from pandas_datareader import data as pdr
 import os
+from requests_ratelimiter import LimiterSession
 from scipy.stats import linregress
 import time
 import yfinance as yf
@@ -132,7 +132,7 @@ def get_df(stock, end_date, interval="1d", redownload=False, save=True):
     
     # Save the price data to a .csv file if the most updated data do not exist
     if not os.path.isfile(filename) or redownload:
-        df = yf.download(stock, start=csv_date, end=end_date, interval=interval)
+        df = yf.download(stock, start=csv_date, end=end_date, interval=interval, session=LimiterSession(per_second=3))
         if not df.empty:
             df.columns = df.columns.droplevel(1)
             if interval == "1d":
@@ -182,7 +182,7 @@ def get_df(stock, end_date, interval="1d", redownload=False, save=True):
 def get_stock_info(stock):
     try:
         time.sleep(0.5)
-        return yf.Ticker(stock).info
+        return yf.Ticker(stock, session=LimiterSession(per_second=3)).info
     
     except Exception as e:
         print((f"Error for get_stock_info {stock}: {e}\n"))
