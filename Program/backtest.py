@@ -836,7 +836,7 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     plt.show()
 
 # SMA crossover strategy implementation
-def SMA_strategy(df, period_short=1, period_long=200, column="Close"):
+def SMA_strategy(df, period_short=50, period_long=200, column="Close"):
     """
     Inputs:
     - df (dataframe): Dataframe containing price data.
