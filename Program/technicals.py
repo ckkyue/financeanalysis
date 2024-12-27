@@ -5,11 +5,12 @@ from helper_functions import get_df, slope_reg
 import numpy as np
 import os
 import pandas as pd
+pd.options.mode.chained_assignment = None
 from scipy.stats import linregress
 from tqdm import tqdm
 
 # Create dataframes to store RS ratings and volume ranks
-def create_rs_volume_df(stocks, current_date, end_dates, periods, index_returns, index_shortName, result_folder, infix, backtest, print_multiple=True):
+def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_shortName, result_folder, infix, backtest, print_multiple=True):
     # Convert inputs to lists
     if not isinstance(end_dates, list):
         end_dates = [end_dates]
@@ -22,11 +23,6 @@ def create_rs_volume_df(stocks, current_date, end_dates, periods, index_returns,
     rs_dfs = []
     volume_dfs = []
     rs_volume_dfs = []
-
-    # Fetch data once per stock
-    dfs = {}
-    for stock in tqdm(stocks, desc="Fetching stock price data"):
-        dfs[stock] = get_df(stock, current_date)
     
     # Iterate over all combinations of end dates, periods, and index return
     for end_date, period, index_return in zip(end_dates, periods, index_returns):

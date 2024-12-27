@@ -56,6 +56,7 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
         current = dt.datetime.strptime(current_date, "%Y-%m-%d")
         # Calculate the target date
         target_date = current - relativedelta(years=years)
+        target_date = target_date.replace(day=1)
 
         # Get the price data of the index
         df = get_df(index_name, current_date)
@@ -72,11 +73,11 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
         while current_date_int <= current:
             if interval == "1m":
                 # Find the first trading date in the month
-                month_start = current_date_int.replace(day=1)
+                month_start = current_date_int
                 month_end = month_start + relativedelta(months=1, days=-1)
                 first_trading_date = df.loc[(df.index >= month_start) & (df.index <= month_end)].index.min()
             elif interval == "1w":
-                week_start = current_date_int.replace(day=1)
+                week_start = current_date_int
                 week_end = week_start + relativedelta(weeks=1, days=-1)
                 first_trading_date = df.loc[(df.index >= week_start) & (df.index <= week_end)].index.min()
 

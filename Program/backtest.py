@@ -1105,15 +1105,13 @@ def main():
     # Number of stocks to be selected
     top = 5
 
-    recreate_stock_dict = True
-    if recreate_stock_dict:
-        # Create the stock dictionary for all factor comnbinations
-        for factors in tqdm(factors_group):
-            # Define the result folder
-            result_folder = "Backtest/Stock dict"
-            filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
-            if not os.path.exists(filename):
-                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
+    # Create the stock dictionary for all factor comnbinations
+    for factors in tqdm(factors_group):
+        # Define the result folder
+        result_folder = "Backtest/Stock dict"
+        filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
+        if not os.path.exists(filename):
+            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:

@@ -8,6 +8,7 @@ from helper_functions import get_current_date, generate_end_dates, get_currency,
 import multiprocessing
 import numpy as np
 import pandas as pd
+pd.options.mode.chained_assignment = None
 from pandas import ExcelWriter as EW
 import os
 from sklearn.preprocessing import MinMaxScaler
@@ -389,11 +390,26 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         if os.path.isfile(filename):
             end_dates.remove(end_date)
 
+    # Get the stocks of the current stock market
+    stocks_current = stock_market(current_date, current_date, index_name, HKEX_all, NASDAQ_all)
+
+    # Fetch price data once per stock
+    dfs = {}
+    for stock in tqdm(stocks_current, desc="Fetching stock price data"):
+        dfs[stock] = get_df(stock, current_date)
+
+    # Initialise stock_infos as an empty dictionary to store stock information
+    stock_infos = {}
+
     # Iterate over all end dates
-    for end_date in tqdm(end_dates):
+    for end_date in tqdm(end_dates, desc="Processing end dates"):
         # Get the stocks of the stock market
         stocks = stock_market(end_date, current_date, index_name, HKEX_all, NASDAQ_all)
-        
+
+        # Fetch data for stocks for end date
+        for stock in tqdm(set(stocks) - set(dfs.keys()), desc=f"Fetching stock price data for {end_date}"):
+            dfs[stock] = get_df(stock, current_date) 
+
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
 
@@ -401,7 +417,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         index_df = index_df[index_df.index <= end_date]
 
         # Calculate the percent change of the index
-        index_df.loc[:, "Percent Change"] = index_df["Close"].pct_change()
+        index_df["Percent Change"] = index_df["Close"].pct_change()
 
         # Calculate the total return of the index
         index_return = (index_df["Percent Change"] + 1).tail(period).cumprod().iloc[-1]
@@ -409,7 +425,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         print(f"Return for {index_shortName} between {index_df.index[-period].strftime('%Y-%m-%d')} and {end_date}: {index_return:.2f}")
 
         # Find the return multiples and volumes
-        rs_df, volume_df, rs_volume_df = create_rs_volume_df(stocks, current_date, end_date, period, index_return, index_shortName, result_folder, infix, backtest)
+        rs_df, volume_df, rs_volume_df = create_rs_volume_df(stocks, dfs, end_date, period, index_return, index_shortName, result_folder, infix, backtest)
         
         # Filter the stocks
         if index_name == "^HSI":
@@ -427,12 +443,14 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
             rs_df = rs_df[rs_df["RS"] >= RS]
             stocks = rs_df["Stock"]
 
-        # Create a pool of worker processes to fetch the stock price data and information
+        # Create a pool of worker processes to fetch the stock price data
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             partial_get_df = partial(get_df, end_date=current_date)
             stock_dfs = {stock: df for stock, df in zip(stocks, list(tqdm(pool.imap(partial_get_df, stocks, 1), total=len(stocks), desc="Fetching stock price data")))}
-        stock_infos = {stock: get_stock_info(stock) for stock in tqdm(stocks, desc="Fetching stock info")}
         
+        # Update stock_infos for stocks that are not already present
+        stock_infos.update({stock: get_stock_info(stock) for stock in tqdm(set(stocks) - set(stock_infos.keys()), desc=f"Fetching stock info for {end_date}")})
+
         # Process each stock and create an export list
         export_data = [process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_infos, rs_volume_df, backtest=backtest) for stock in tqdm(stocks)]
         export_data = [row for row in export_data if row is not None]

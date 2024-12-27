@@ -387,7 +387,6 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
             
             # Get the most recent report date
             recent_report_date = max(earning_dates)
-            print(recent_report_date)
 
         # Estimate the recent report date by shifting 3 months backwards from end date
         else:
