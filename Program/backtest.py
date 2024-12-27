@@ -1086,6 +1086,9 @@ def main():
     index_name = "^GSPC"
     index_dict = {"^HSI": "HKEX", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
+    # Get the infix
+    infix = get_infix("^GSPC", index_dict, True)
+
     # Get the current date
     current_date = get_current_date(start, index_name)
 
@@ -1102,11 +1105,15 @@ def main():
     # Number of stocks to be selected
     top = 5
 
-    recreate_stock_dict = False
+    recreate_stock_dict = True
     if recreate_stock_dict:
         # Create the stock dictionary for all factor comnbinations
         for factors in tqdm(factors_group):
-            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
+            # Define the result folder
+            result_folder = "Backtest/Stock dict"
+            filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
+            if not os.path.exists(filename):
+                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
@@ -1128,9 +1135,6 @@ def main():
 
     show_momentum_stats = False
     if show_momentum_stats:
-        # Get the infix
-        infix = get_infix("^GSPC", index_dict, True)
-
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}top{top}.npy", allow_pickle=True)
 
