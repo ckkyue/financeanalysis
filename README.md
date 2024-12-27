@@ -1,10 +1,11 @@
 # StockAnalysis
-This repository contains .py files for screening potential high-growth stocks using several technical indicators. You can select stocks from the Hong Kong Exchanges and Clearing Limited (HKEX), the National Association of Securities Dealers Automated Quotations (NASDAQ), S&P 500, and NASDAQ Composite.
+This repository contains Python scripts designed to identify potential high-growth stocks using various technical indicators. The screener allows you to select stocks listed on the following exchanges:
 
-To delete all .csv files, navigate to the folder in the terminal and run
-```bash
-rm *.csv
-```
+- **Hong Kong Exchanges and Clearing Limited (HKEX)**
+- **NASDAQ**
+- **S&P 500**
+- **NASDAQ Composite**
+
 ## Libraries
 Ensure that you have installed the following libraries.
 ```bash
