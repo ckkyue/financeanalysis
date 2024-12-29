@@ -15,59 +15,77 @@ from technicals import *
 
 # Visualize the closing price history
 def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_extrema_period=5, FTD_DD=False, save=False):
+    # Check for candlestick columns
+    columns_cs = ["High", "Low", "Open"]
+    cond_cs = all(column in df.columns for column in columns_cs)
+    
     # Add technical indicators to the data
-    add_indicator(df)
+    if cond_cs:
+        df = add_indicator(df)
+    else:
+        print(f"Missing columns: {', '.join([column for column in columns_cs if column not in df.columns])}. Candlestick chart not created.")
 
     # Find the local extrema
-    df = get_local_extrema(df, period=local_extrema_period)
+    if local_extrema:
+        df = get_local_extrema(df, period=local_extrema_period)
 
-    # Calculate the retracement
-    local_min1, local_max1, retracement = calculate_retracement(df)
+        # Calculate the retracement
+        local_min1, local_max1, retracement = calculate_retracement(df)
 
-    # Calculate the percentage of retracement
-    retracement_pct = round(retracement * 100, 2) if retracement is not None else None
+        # Calculate the percentage of retracement
+        retracement_pct = round(retracement * 100, 2) if retracement is not None else None
 
     # Filter the data
     df = df[- show:]
+    
+    if cond_cs:
+        # Define the widths
+        width_candle = 1
+        width_stick = 0.2
 
-    # Define the widths
-    width_candle = 1
-    width_stick = 0.2
+        # Separate the dataframe into green and red candlesticks
+        up_df = df[df["Close"] >= df["Open"]]
+        down_df = df[df["Close"] <= df["Open"]]
+        colour_up = "green"
+        colour_down = "red"
 
-    # Separate the dataframe into green and red candlesticks
-    up_df = df[df["Close"] >= df["Open"]]
-    down_df = df[df["Close"] <= df["Open"]]
-    colour_up = "green"
-    colour_down = "red"
-
-    # Create a figure with two subplots, one for the closing price and one for the volume
-    if stock == "^VIX":
-        fig, ax1 = plt.subplots(1, 1, figsize=(10, 6))
-    else:
+    # Create a figure with two subplots, one for the closing price and one for the volume        
+    if "Volume" in df.columns and stock != "^VIX":
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [5, 1]}, sharex=True)
-        
-    # Plot the up prices on the top subplot
-    ax1.bar(up_df.index, up_df["Close"] - up_df["Open"], width_candle, bottom=up_df["Open"], color=colour_up)
-    ax1.bar(up_df.index, up_df["High"] - up_df["Close"], width_stick, bottom=up_df["Close"], color=colour_up)
-    ax1.bar(up_df.index, up_df["Low"] - up_df["Open"], width_stick, bottom=up_df["Open"], color=colour_up)
+    else:
+        fig, ax1 = plt.subplots(1, 1, figsize=(10, 6))
 
-    # Plot the down prices on the top subplot
-    ax1.bar(down_df.index, down_df["Close"] - down_df["Open"], width_candle, bottom=down_df["Open"], color=colour_down)
-    ax1.bar(down_df.index, down_df["High"] - down_df["Open"], width_stick, bottom=down_df["Open"], color=colour_down)
-    ax1.bar(down_df.index, down_df["Low"] - down_df["Close"], width_stick, bottom=down_df["Close"], color=colour_down)
+    if cond_cs:
+        # Plot the up prices on the top subplot
+        ax1.bar(up_df.index, up_df["Close"] - up_df["Open"], width_candle, bottom=up_df["Open"], color=colour_up)
+        ax1.bar(up_df.index, up_df["High"] - up_df["Close"], width_stick, bottom=up_df["Close"], color=colour_up)
+        ax1.bar(up_df.index, up_df["Low"] - up_df["Open"], width_stick, bottom=up_df["Open"], color=colour_up)
 
-    # Plot the MVP and VCP conditions on the top subplot
-    if MVP_VCP:
-        ax1.scatter(df.index[df["MVP"] == "M"], df["Close"][df["MVP"] == "M"], marker="^", edgecolor="black", facecolors="grey", label="M")
-        ax1.scatter(df.index[df["MVP"] == "MP"], df["Close"][df["MVP"] == "MP"], marker="^", edgecolor="black", facecolors="yellow", label="MP")
-        ax1.scatter(df.index[df["MVP"] == "MV"], df["Close"][df["MVP"] == "MV"], marker="^", edgecolor="black", facecolors="blue", label="MV")
-        ax1.scatter(df.index[df["MVP"] == "MVP"], df["Close"][df["MVP"] == "MVP"], marker="^", edgecolor="black", facecolors="green", label="MVP")
-        ax1.scatter(df.index[df["VCP"] == True], df["Close"][df["VCP"] == True], marker=">", edgecolor="black", facecolors="orange", label="VCP")
+        # Plot the down prices on the top subplot
+        ax1.bar(down_df.index, down_df["Close"] - down_df["Open"], width_candle, bottom=down_df["Open"], color=colour_down)
+        ax1.bar(down_df.index, down_df["High"] - down_df["Open"], width_stick, bottom=down_df["Open"], color=colour_down)
+        ax1.bar(down_df.index, down_df["Low"] - down_df["Close"], width_stick, bottom=down_df["Close"], color=colour_down)
 
-    # Plot FTDs and DDs on the top subplot
-    if FTD_DD:
-        ax1.scatter(df.index[df["FTD"]], df["Low"][df["FTD"]] * 0.98, marker="x", color="green", label="FTD")
-        ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 0.98, marker="x", color="red", label="DD")
+        # Plot the MVP and VCP conditions on the top subplot
+        if MVP_VCP:
+            ax1.scatter(df.index[df["MVP"] == "M"], df["Close"][df["MVP"] == "M"], marker="^", edgecolor="black", facecolors="grey", label="M")
+            ax1.scatter(df.index[df["MVP"] == "MP"], df["Close"][df["MVP"] == "MP"], marker="^", edgecolor="black", facecolors="yellow", label="MP")
+            ax1.scatter(df.index[df["MVP"] == "MV"], df["Close"][df["MVP"] == "MV"], marker="^", edgecolor="black", facecolors="blue", label="MV")
+            ax1.scatter(df.index[df["MVP"] == "MVP"], df["Close"][df["MVP"] == "MVP"], marker="^", edgecolor="black", facecolors="green", label="MVP")
+            ax1.scatter(df.index[df["VCP"] == True], df["Close"][df["VCP"] == True], marker=">", edgecolor="black", facecolors="orange", label="VCP")
+
+        # Plot FTDs and DDs on the top subplot
+        if FTD_DD:
+            ax1.scatter(df.index[df["FTD"]], df["Low"][df["FTD"]] * 0.98, marker="x", color="green", label="FTD")
+            ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 0.98, marker="x", color="red", label="DD")
+
+        # Plot the SMAs on the top subplot
+        periods = [5, 20, 50, 200]
+        for i in periods:
+            ax1.plot(df[f"SMA {str(i)}"], label=f"SMA {str(i)}")
+    else:
+        # Plot the closing prices on the top subplot
+        ax1.plot(df.index, df["Close"])
 
     # Scatter points for local minima and maxima
     if local_extrema:
@@ -78,11 +96,6 @@ def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_ext
         if retracement_pct is not None:
             ax1.text(0.4, 0.95, f"Retracement: {retracement_pct}%\nRecent min: {round(local_min1, 2)}\nRecent max: {round(local_max1, 2)}", 
                     transform=ax1.transAxes, fontsize=10, ha="left", va="top", bbox=dict(facecolor="white", alpha=0.5))
-            
-    # Plot the SMAs on the top subplot
-    periods = [5, 20, 50, 200]
-    for i in periods:
-        ax1.plot(df[f"SMA {str(i)}"], label=f"SMA {str(i)}")
 
     # Set the y label of the top subplot
     ax1.set_ylabel("Price")
@@ -91,15 +104,13 @@ def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_ext
     buffer = relativedelta(days=1)
     ax1.set_xlim(df.index[0] - buffer, df.index[-1] + buffer)
 
-    if stock != "^VIX":
+    if "Volume" in df.columns and stock != "^VIX":
         # Plot the volume on the bottom subplot
         ax2.bar(up_df.index, up_df["Volume"], label="Volume (+)", color=colour_up)
         ax2.bar(down_df.index, down_df["Volume"], label="Volume (-)", color=colour_down)
 
         # Plot the volume SMA 50 on the bottom subplot
         ax2.plot(df["Volume SMA 50"], label="Volume SMA 50", color="purple")
-
-        # Plot the follow-through days (FTDs) and distribution days (DDs)
 
         # Set the label of the bottom subplot
         ax2.set_ylabel("Volume")
@@ -196,12 +207,13 @@ def plot_MACD(stock, df, period=252, show=252, save=False):
     plt.show()
 
 # Plot the MFI/RSI indicator
-def plot_MFI_RSI(stock, df, period=252, show=252, save=False):
+def plot_MFI_RSI(stock, df, mfi_period=14, rsi_period=14, zscore_period=252, show=252, save=False):
     # Add technical indicators to the data
-    add_indicator(df)
+    df = MFI(df, period=mfi_period)
+    df = RSI(df, period=rsi_period)
 
     # Calculate the z-scores of MFI and RSI
-    df = calculate_ZScore(df, ["MFI", "RSI"], period)
+    df = calculate_ZScore(df, ["MFI", "RSI"], zscore_period)
 
     # Filter the data
     df = df[- show:]

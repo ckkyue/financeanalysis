@@ -182,7 +182,7 @@ def get_df(stock, end_date, interval="1d", redownload=False, save=True):
 # Get the information of a stock from yfinance
 def get_stock_info(stock):
     try:
-        time.sleep(0.5)
+        # time.sleep(0.5)
         return yf.Ticker(stock, session=LimiterSession(per_second=5)).info
     
     except Exception as e:

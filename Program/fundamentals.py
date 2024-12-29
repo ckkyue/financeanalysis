@@ -13,7 +13,7 @@ import time
 import yfinance as yf
 
 # Scrape the url
-def scrape(url, retry=0, **kwargs):
+def scrape(url, retry=0, max_retry=10, **kwargs):
     session = requests.Session()
 
     # Add the headers to mimic a browser
@@ -33,11 +33,11 @@ def scrape(url, retry=0, **kwargs):
 
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 429:
-            if retry < 10: # Maximum retry attempts set to 10
+            if retry < max_retry: # Maximum retry attempts set to 10
                 retry_after = np.ceil(float(e.response.headers.get("Retry-After", 10))) # Default to 10 seconds if Retry-After header is missing
                 time.sleep(retry_after)
                 print(f"Retry after {retry_after} for {url}.")
-                return scrape(url, retry=retry+1, **kwargs) # Retry the scrape after waiting
+                return scrape(url, retry=retry+1, max_retry=max_retry, **kwargs) # Retry the scrape after waiting
             else:
                 return f"Maximum number of retry attempts reached."
         else:
@@ -92,7 +92,7 @@ def get_csv_date(current_date, before=True):
         return None
 
 # Get the fundamentals of a stock and save the data to a .csv file
-def fundamentals_csv(stock, end_date):
+def fundamentals_csv(stock, end_date, backtest=False):
     stock = stock.replace("-", ".")
 
     # Get the csv date
@@ -128,7 +128,8 @@ def fundamentals_csv(stock, end_date):
         try:
             stock_upper = stock.upper()
             url_revenue = f"https://www.macrotrends.net/stocks/charts/{stock_upper}/unknown/revenue"
-            response_revenue = scrape(url_revenue)
+            max_retry = 2 if backtest else 10
+            response_revenue = scrape(url_revenue, max_retry=max_retry)
 
             try:
                 base_url = response_revenue.url
@@ -146,9 +147,9 @@ def fundamentals_csv(stock, end_date):
             url2 = f"https://www.macrotrends.net/stocks/charts/{stock_upper}/{infix}/financial-ratios?freq=Q"
 
             # Scrape the urls and create dataframes
-            response1 = scrape(url1)
+            response1 = scrape(url1, max_retry=max_retry)
             df1 = etl(response1)
-            response2 = scrape(url2)
+            response2 = scrape(url2, max_retry=max_retry)
             df2 = etl(response2)
 
             # Check if df1 or df2 is empty
@@ -298,7 +299,7 @@ def get_earning_dates(stock, current_date):
     return earning_dates
 
 # Get the market cap of a stock
-def get_market_cap(stock, stock_info, end_date, current_date):
+def get_market_cap(stock, stock_info, end_date, current_date, backtest=False):
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
@@ -331,7 +332,7 @@ def get_market_cap(stock, stock_info, end_date, current_date):
         csv_date = get_csv_date(current_date)
 
         # Read the fundamentals data from .csv file
-        df = fundamentals_csv(stock, csv_date)
+        df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
         # Check if the dataframe is None
         if df is not None:
@@ -363,7 +364,7 @@ def get_market_cap(stock, stock_info, end_date, current_date):
     return market_cap
 
 # Get the fundamentals data of a stock
-def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS this Y", "EPS Q/Q", "ROE"]):
+def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS this Y", "EPS Q/Q", "ROE"], backtest=False):
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
@@ -396,7 +397,7 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
         csv_date = get_csv_date(current_date)
 
         # Read the fundamentals data from .csv file
-        df = fundamentals_csv(stock, csv_date)
+        df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
         # Check if the dataframe is None
         if df is not None:
@@ -446,7 +447,7 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
     return EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE
 
 # Get the quarterly growths of a stock
-def get_lastQ_growths(stock, index_name, end_date, current_date):
+def get_lastQ_growths(stock, index_name, end_date, current_date, backtest=False):
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
@@ -477,7 +478,7 @@ def get_lastQ_growths(stock, index_name, end_date, current_date):
         csv_date = get_csv_date(current_date)
         
          # Read the fundamentals data from .csv file       
-        df = fundamentals_csv(stock, csv_date)
+        df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
         # Check if the dataframe is None
         if df is not None:

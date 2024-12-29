@@ -200,7 +200,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
 
         # Preprocess stock information
         if conds_tech:
-            market_cap = get_market_cap(stock, stock_info, end_date, current_date)
+            market_cap = get_market_cap(stock, stock_info, end_date, current_date, backtest=backtest)
 
             # Fundamentals
             cond_f1 = market_cap != "N/A" and market_cap > 1
@@ -222,7 +222,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                     ROE = stock_info["returnOnEquity"] * 100
 
                 else:
-                    EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = get_fundamentals(stock, end_date, current_date)
+                    EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = get_fundamentals(stock, end_date, current_date, backtest=backtest)
 
                 if index_name == "^HSI":
                     conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_nextY_growth, earnings_thisQ_growth, ROE)
@@ -235,7 +235,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
                     industry = stock_info.get("industry", "N/A")
 
                     # Get the quarterly growths of the stock
-                    EPS_thisQ_growth, EPS_last1Q_growth, EPS_last2Q_growth = get_lastQ_growths(stock, index_name, end_date, current_date)
+                    EPS_thisQ_growth, EPS_last1Q_growth, EPS_last2Q_growth = get_lastQ_growths(stock, index_name, end_date, current_date, backtest=backtest)
 
                     # Calculate the volatility of the stock over past 1 month
                     data = get_volatility(df)
@@ -486,7 +486,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         writer._save()
 
 # Create the stock dictionary
-def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, top=10, RS=90, period=252, backtest=False):
+def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, backtest=False):
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
@@ -524,8 +524,8 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, to
         if stocks_num == 0:
             stock_dict[end_date] = None
         else:
-            top_stocks = df.head(top)["Stock"].tolist()
-            stock_dict[end_date] = top_stocks
+            stocks = df["Stock"].tolist()
+            stock_dict[end_date] = stocks
 
         # Sort stock_dict by date
         stock_dict = dict(sorted(stock_dict.items(), key=lambda x: dt.datetime.strptime(x[0], "%Y-%m-%d")))
@@ -552,7 +552,7 @@ def main():
     HKEX_all = True
     NASDAQ_all = True
     period_hk = 60 # Period for HK stocks
-    period_us = 252 # Period for US stocks
+    period_us = 252 # Period for US stocks 
     RS = 90
     factors = [0.15, 0.05, 0.8]
     backtest = True
@@ -563,6 +563,7 @@ def main():
 
     # Get the current date
     current_date = get_current_date(start, index_name)
+    current_date = "2024-12-27"
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval="1w")

@@ -27,15 +27,12 @@ def lorentzian_metric(arr1, arr2):
 
 # Create the train and test data
 def preprocess_knn(df, start_date, end_date, lookback, features, scaler=StandardScaler()):
-    # Calculate the SMAs
-    for i in [20, 50]:
-        df[f"SMA {str(i)}"] = SMA(df, i)
-
-        # Calculate the ratio of the closing price to the SMA
-        df[f"SMA {str(i)} Ratio"] = df["Close"] / df[f"SMA {str(i)}"]
-
     # Add technical indicators to the data
     add_indicator(df)
+
+    # Calculate the ratio of the closing price to the SMAs
+    for i in [20, 50]:
+        df[f"SMA {str(i)} Ratio"] = df["Close"] / df[f"SMA {str(i)}"]
     
     # Create a new column "Change" indicating if the closing price increases or decreases the next day
     df["Change"] = (df["Close"].shift(-1) > df["Close"]).astype(int)
@@ -131,7 +128,7 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks
     RS = 90
-    factors = [1, 1, 1]
+    factors = [0.15, 0.05, 0.8]
     backtest = True
 
     # Index
@@ -159,7 +156,7 @@ def main():
     k = 3
     lookbacks = [1, 2]
     lookback = 1
-    features = ["Close", "SMA 50 Ratio", "RSI", "RMI", "MFI", "ADX"]
+    features = ["Close", "SMA 50 Ratio", "MFI", "ADX"]
     knn_params = {"k": k, "lookback": lookback, "features": features}
 
     # Get the equity curve of the KNN model
@@ -194,8 +191,8 @@ def main():
     # Set the legend
     plt.legend(loc="upper left")
 
-    # Save the plot
-    plt.savefig(f"Result/Figure/{infix}equitycurvelknn{factors}k{k}lb{lookback}top{top}.png", dpi=300)
+    # # Save the plot
+    # plt.savefig(f"Result/Figure/{infix}equitycurvelknn{factors}k{k}lb{lookback}top{top}.png", dpi=300)
 
     # Show the plot
     plt.show()
@@ -214,53 +211,6 @@ def main():
     print(f"CAGR: {(CAGR_stock * 100):.2f}%.")
     print(f"Sharpe ratio: {sharpe_ratio_stock:.2f}.")
     print(f"Sortino ratio: {sortino_ratio_stock:.2f}.")
-
-    # Get the price data of the index
-    index_df = get_df(index_name, current_date)
-    index_df = add_indicator(index_df)
-
-    # Iterate over all lookbacks
-    for lookback in lookbacks:
-        # Initialize an empty list for storing the test accuracies
-        accuracy_test_lknn_all = []
-
-        # Iterate over all ks
-        for k in tqdm(ks):
-            X_train, Y_train, X_test, Y_test, df_test = preprocess_knn(index_df, "2013-12-31", "2018-12-31", lookback, features)
-            accuracy_train_knn, accuracy_test_knn, cm_train_knn, cm_test_knn, X_train_knn, X_test_knn = knn_accuracy(X_train, Y_train, X_test, Y_test, k)
-            accuracy_train_lknn, accuracy_test_lknn, cm_train_lknn, cm_test_lknn, X_train_lknn, X_test_lknn = knn_accuracy(X_train, Y_train, X_test, Y_test, k, lorentzian=True)
-            accuracy_test_lknn_all.append(accuracy_test_lknn)
-        
-        # Save the test accuracies
-        np.save(f"Result/{index_name}accuracy_test_lknn_lb{lookback}top{top}.npy", np.array(accuracy_test_lknn_all))
-
-    # Iterate over all lookbacks
-    for lookback in lookbacks:
-        # Load the test accuracies
-        accuracy_test_lknn_all = np.load(f"Result/{index_name}accuracy_test_lknn_lb{lookback}top{top}.npy")
-
-        # Create a figure
-        plt.figure(figsize=(10, 6))
-
-        # Plot the test accuracy for all ks
-        plt.scatter(ks, accuracy_test_lknn_all, marker="x")
-        plt.plot(ks, accuracy_test_lknn_all)
-
-        # Set the labels
-        plt.xlabel(r"$k$")
-        plt.ylabel("Test accuracy")
-
-        # Set the x limit
-        plt.xlim(xmin=np.min(ks)-1, xmax=np.max(ks))
-        
-        # Set the title
-        plt.title(fr"Test accuracy of Lorentzian KNN versus $k$ with lookback={lookback}")
-
-        # Save the plot
-        plt.savefig(f"Result/Figure/{infix}accuracy_test_lknn_lb{lookback}top{top}.png", dpi=300)
-
-        # Show the plot
-        plt.show()
 
 # Run the main function
 if __name__ == "__main__":
