@@ -37,14 +37,24 @@ def main():
     # Get the current date
     current_date = get_current_date(start, index_name)
 
+    # Parameters for backtesting the momentum strategy
+    years = 7
+    interval = "1w"
+    top = 5
+    momentum_params = {"years": years, 
+                       "interval": interval, 
+                       "top": top, 
+                       "period_short": 1, 
+                       "period_long": 200, 
+                       "SMA_crossover": False, 
+                       "leverage": 1, 
+                       "fee_rate": 0.001}
+    
     # Create the end dates
-    years = 5
+    years = 7
     end_dates = generate_end_dates(years, current_date)
     end_dates.append(current_date)
-
-    # Number of stocks to be selected
-    top = 5
-
+    
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
 
@@ -55,7 +65,7 @@ def main():
     infix = get_infix("^GSPC", index_dict, True)
 
     # Load the statistics of all factors
-    factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}top{top}.npy", allow_pickle=True)
+    factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}.npy", allow_pickle=True)
 
     # Calculate the CAGR, Sharpe ratio and Sortino ratio values of momentum strategies
     # Initialize three empty lists to store the metrics
@@ -67,13 +77,12 @@ def main():
     for stats in factors_stats:
         factors = stats[0]
         mvp_factor, eps_yoy_factor, eps_qoq_factor = factors
-        if mvp_factor <= 0.5:
-            CAGR = stats[1][1][2] * 100
-            sharpe_ratio = stats[1][1][4]
-            sortino_ratio = stats[1][1][5]
-            CAGR_values.append(CAGR)
-            sharpe_ratio_values.append(sharpe_ratio)
-            sortino_ratio_values.append(sortino_ratio)
+        CAGR = stats[1][1][2] * 100
+        sharpe_ratio = stats[1][1][4]
+        sortino_ratio = stats[1][1][5]
+        CAGR_values.append(CAGR)
+        sharpe_ratio_values.append(sharpe_ratio)
+        sortino_ratio_values.append(sortino_ratio)
 
     # Calculate the CAGR, Sharpe ratio and Sortino ratio values of the index
     stats_index = calculate_stats(index_df, len(index_df) / 252)[1]

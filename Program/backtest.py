@@ -550,15 +550,14 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     # Iterate over the statistics of all factors to extract values
     for stats in factors_stats:
         mvp_factor, eps_yoy_factor, eps_qoq_factor = stats[0]
-        if mvp_factor < 0.5:
-            CAGR = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
-            sharpe_ratio = stats[1][1][4]
-            sortino_ratio = stats[1][1][5]
-            x_values.append(mvp_factor)
-            y_values.append(eps_yoy_factor)
-            CAGR_values.append(CAGR)
-            sharpe_ratio_values.append(sharpe_ratio)
-            sortino_ratio_values.append(sortino_ratio)
+        CAGR = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
+        sharpe_ratio = stats[1][1][4]
+        sortino_ratio = stats[1][1][5]
+        x_values.append(mvp_factor)
+        y_values.append(eps_yoy_factor)
+        CAGR_values.append(CAGR)
+        sharpe_ratio_values.append(sharpe_ratio)
+        sortino_ratio_values.append(sortino_ratio)
 
     # Calculate the proportion of CAGRs higher than the index's CAGR
     CAGR_mean = np.mean(CAGR_values)
@@ -1076,23 +1075,25 @@ def main():
 
     plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
-        # Calculate the equity curve of a single combination of factors
-        factors = [0.15, 0.05, 0.8]
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
 
-    evaluate_momentum = False
+    evaluate_momentum = True
     if evaluate_momentum:
-        # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
-        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
-
-        # Plot the equity curve of stocks of the momentum strategy
-        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, plot_group=True, save=True)
+        # # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
+        # create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
         # Save the statistics of all factors of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
-    show_momentum_stats = False
+    plot_momentum_equity_curve_all = True
+    if plot_momentum_equity_curve_all:
+        # Calculate the equity curve of a single combination of factors
+        factors = [0.15, 0.05, 0.8]
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
+        # Plot the equity curve of stocks of the momentum strategy
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, plot_group=True, save=True)
+
+    show_momentum_stats = True
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}.npy", allow_pickle=True)
