@@ -763,6 +763,8 @@ def calculate_stats(df, years, name=None):
         df[f"{name} Percent Change"] = ((df["Percent Change"] - df["Fee"]) * df["Asset Buy"]).fillna(0)
         df[f"Cumulative {name} Return"] = (df[f"{name} Percent Change"] + 1).cumprod()
         total_return = df[f"Cumulative {name} Return"].iloc[-1]
+    elif name is not None:
+        total_return = df[f"Cumulative {name} Return"].iloc[-1]
     else:
         total_return = df["Cumulative Return"].iloc[-1]
 
@@ -1077,7 +1079,7 @@ def main():
     if plot_momentum_equity_curve_single:
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
 
-    evaluate_momentum = True
+    evaluate_momentum = False
     if evaluate_momentum:
         # # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
         # create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
@@ -1085,15 +1087,15 @@ def main():
         # Save the statistics of all factors of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
         # Calculate the equity curve of a single combination of factors
-        factors = [0.15, 0.05, 0.8]
+        factors = [0.2, 0.15, 0.65]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         # Plot the equity curve of stocks of the momentum strategy
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, plot_group=True, save=True)
 
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}.npy", allow_pickle=True)

@@ -554,7 +554,7 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks 
     RS = 90
-    factors = [0.15, 0.05, 0.8]
+    factors = [0.2, 0.15, 0.65]
     backtest = True
 
     # Index
@@ -563,7 +563,6 @@ def main():
 
     # Get the current date
     current_date = get_current_date(start, index_name)
-    current_date = "2024-12-27"
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval="1w")
