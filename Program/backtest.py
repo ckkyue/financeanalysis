@@ -2,9 +2,11 @@
 import ast
 import datetime as dt
 from dateutil.relativedelta import relativedelta
+from functools import partial
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix, randomize_array
 import itertools
 import matplotlib.pyplot as plt
+import multiprocessing
 import numpy as np
 import os
 import pandas as pd
@@ -1038,21 +1040,10 @@ def main():
     # Get the current date
     current_date = get_current_date(start, index_name)
 
-    # Create the end dates
-    years = 5
-    interval = "1m"
-    end_dates = generate_end_dates(years, current_date, interval=interval)
-    end_dates.append(current_date)
-
-    # Create a group of factors
-    factors_group = [[i / 20, j / 20, k / 20] 
-                     for i, j, k in itertools.product(range(21), repeat=3) 
-                     if i + j + k == 20]
-    
-    # Number of stocks to be selected
-    top = 5
-
     # Parameters for backtesting the momentum strategy
+    years = 7
+    interval = "1w"
+    top = 5
     momentum_params = {"years": years, 
                        "interval": interval, 
                        "top": top, 
@@ -1062,19 +1053,28 @@ def main():
                        "leverage": 1, 
                        "fee_rate": 0.001}
 
+    # Create the end dates
+    end_dates = generate_end_dates(years, current_date, interval=interval)
+    end_dates.append(current_date)
+
+    # Create a group of factors
+    factors_group = [[i / 20, j / 20, k / 20] 
+                     for i, j, k in itertools.product(range(21), repeat=3) 
+                     if i + j + k == 20]
+
     # Create the stock dictionary for all factor comnbinations
     recreate_stock_dict = False
-    if recreate_stock_dict:
-        for factors in tqdm(factors_group):
+    for factors in tqdm(factors_group):
+        if recreate_stock_dict:
             create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
-    else:
-        # Define the result folder
-        result_folder = "Backtest/Stock dict"
-        filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
-        if not os.path.exists(filename):
-            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
+        else:
+            # Define the result folder
+            result_folder = "Backtest/Stock dict"
+            filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
+            if not os.path.exists(filename):
+                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Calculate the equity curve of a single combination of factors
         factors = [0.15, 0.05, 0.8]
@@ -1106,26 +1106,32 @@ def main():
         # Compare the statistics between the index and stocks selected by the momentum strategy
         compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, save=True)
     
-    # Get the price data of the index
-    index_df = get_df(index_name, current_date)
+    index_corr_ta = False
+    if index_corr_ta:
+        # Get the price data of the index
+        index_df = get_df(index_name, current_date)
 
-    # Add technical indicators to the data
-    index_df = add_indicator(index_df)
+        # Add technical indicators to the data
+        index_df = add_indicator(index_df)
 
-    # Plot the correlation matrix of technical indicators
-    plot_corr_ta(index_name, index_df)
+        # Plot the correlation matrix of technical indicators
+        plot_corr_ta(index_name, index_df)
 
-    # Plot the equity curve of the index
-    years = 25
-    returns_arr = calculate_stats(index_df, years)
-    plot_index_equity_curve(index_name, index_dict, 10000, years, returns_arr)
+    index_equity_curve = False
+    if index_equity_curve:
+        # Plot the equity curve of the index
+        years = 25
+        returns_arr = calculate_stats(index_df, years)
+        plot_index_equity_curve(index_name, index_dict, 10000, years, returns_arr)
 
-    # Get the price data of bitcoin
-    btc_df = get_df("BTC-USD", current_date)
-    btc_df = SMA_strategy(btc_df)
+    backtest_bitcoin = False
+    if backtest_bitcoin:
+        # Get the price data of bitcoin
+        btc_df = get_df("BTC-USD", current_date)
+        btc_df = SMA_strategy(btc_df)
 
-    # Test the strategy
-    test_strategy("BTC-USD", btc_df, current_date, 10)
+        # Test the strategy
+        test_strategy("BTC-USD", btc_df, current_date, 10)
 
     # Print the end time and total runtime
     end = dt.datetime.now()
