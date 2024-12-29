@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 import numpy as np
 import pandas as pd
 import os
+import re
 from requests_ratelimiter import LimiterSession
 from scipy.stats import linregress
 import time
@@ -52,40 +53,55 @@ def get_current_date(start, index_name):
     
 # Generate a list of end dates
 def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
+    # Validate the interval format
+    match = re.match(r"(\d+)([a-zA-Z])", interval)
+    if not match:
+        raise ValueError("Input must match the format '<number><unit>'.")
+    
+    number = int(match.group(1))
+    unit = match.group(2)
+
+    if number < 0:
+        raise ValueError("Number must be a non-negative integer.")
+        
+    if unit not in ["w", "m", "y"]:
+        raise ValueError("Unit must be one of 'w' (weeks), 'm' (months), or 'y' (years).")
+
     try:
         current = dt.datetime.strptime(current_date, "%Y-%m-%d")
-        # Calculate the target date
         target_date = current - relativedelta(years=years)
         target_date = target_date.replace(day=1)
 
         # Get the price data of the index
         df = get_df(index_name, current_date)
 
-        # Find the end dates
+        # Initialize the list of end dates
         end_dates = []
         current_date_int = target_date
 
-        if interval == "1m":
-            increment = relativedelta(months=1)
-        elif interval == "1w":
-            increment = relativedelta(weeks=1)
+        # Determine increment based on the unit
+        increment = {"w": relativedelta(weeks=number), 
+                     "m": relativedelta(months=number), 
+                     "y": relativedelta(years=number)
+                     }[unit]
 
+        # Loop to generate end dates
         while current_date_int <= current:
-            if interval == "1m":
-                # Find the first trading date in the month
-                month_start = current_date_int
-                month_end = month_start + relativedelta(months=1, days=-1)
-                first_trading_date = df.loc[(df.index >= month_start) & (df.index <= month_end)].index.min()
-            elif interval == "1w":
+            if unit == "w":
                 week_start = current_date_int
                 week_end = week_start + relativedelta(weeks=1, days=-1)
                 first_trading_date = df.loc[(df.index >= week_start) & (df.index <= week_end)].index.min()
-
-            if pd.isnull(first_trading_date):
-                print(f"Warning: No data found for {week_start.strftime('%Y-%m-%d')} to {week_end.strftime('%Y-%m-%d')}.")
-            else:
+            elif unit == "m":
+                month_start = current_date_int
+                month_end = month_start + relativedelta(months=1, days=-1)
+                first_trading_date = df.loc[(df.index >= month_start) & (df.index <= month_end)].index.min()
+            elif unit == "y":
+                year_start = current_date_int
+                year_end = year_start + relativedelta(years=1, days=-1)
+                first_trading_date = df.loc[(df.index >= year_start) & (df.index <= year_end)].index.min()
+            if first_trading_date is not None:
                 end_dates.append(first_trading_date.strftime("%Y-%m-%d"))
-
+                
             current_date_int += increment
 
         return end_dates
@@ -93,7 +109,7 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
     except (ValueError, KeyError) as e:
         print(f"Error: {e}")
         return None
-    
+
 # Get the price data of a stock
 def get_df(stock, end_date, interval="1d", redownload=False, save=True):
     # Initial setup

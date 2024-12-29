@@ -21,14 +21,14 @@ from stock_screener import create_stock_dict
 from technicals import *
 from tqdm import tqdm
 
-# Calculate the equity curve for a momentum strategy
+# Calculate the equity curve of a momentum strategy
 def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=None):
     """
     Inputs:
     - end_dates (list): List of end dates for backtesting.
-    - current_date (str): The current date for the analysis.
+    - current_date (str): The current date.
     - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors (list): Factors to consider in the strategy.
     - momentum_params (dict): Parameters for the momentum strategy.
@@ -46,27 +46,28 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     top = momentum_params["top"]
     fee_rate = momentum_params["fee_rate"]
     leverage = momentum_params["leverage"]
-    
-    # Get the infix
-    infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Define the result folder
-    result_folder = "Backtest/Stock dict"
+    if factors is not None:
+        # Get the infix
+        infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Define the filename
-    filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
-    
-    # Attempt to load the stock dictionary from file
-    try:
-        if os.path.isfile(filename):
-            with open(filename, "r") as file:
-                stock_dict = ast.literal_eval(file.read())
-        else:
-            print("Error: stock_dict file not found.")
+        # Define the result folder
+        result_folder = "Backtest/Stock dict"
+
+        # Define the filename
+        filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
+        
+        # Attempt to load the stock dictionary from file
+        try:
+            if os.path.isfile(filename):
+                with open(filename, "r") as file:
+                    stock_dict = ast.literal_eval(file.read())
+            else:
+                print("Error: stock_dict file not found.")
+                return None
+        except Exception as e:
+            print(f"Error reading stock_dict file: {e}")
             return None
-    except Exception as e:
-        print(f"Error reading stock_dict file: {e}")
-        return None
 
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
@@ -105,82 +106,80 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     index_df["Percent Change"] = index_df["Close"].pct_change()
     index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
-    # Extract the list of stocks for each backtesting period
-    stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
+    if factors is not None:
+        # Extract the list of stocks for each backtesting period
+        stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
 
-    # Iterate over all backtesting periods
-    for i in tqdm(range(len(end_dates) - 1)):
-        start_date, end_date = end_dates[i], end_dates[i + 1]
-        stocks = stocks_list[i]
+        # Iterate over all backtesting periods
+        for i in tqdm(range(len(end_dates) - 1)):
+            start_date, end_date = end_dates[i], end_dates[i + 1]
+            stocks = stocks_list[i]
 
-        # Determine if short SMA is above long SMA or if crossover check is disabled
-        if SMA_crossover:
-            sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
-        else:
-            sma_cond = True
-        factor = 1 if sma_cond else 0
+            # Determine if short SMA is above long SMA or if crossover check is disabled
+            if SMA_crossover:
+                sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
+            else:
+                sma_cond = True
+            factor = 1 if sma_cond else 0
 
-        # Initialise stock count
-        stocks_num = 0
-        
-        if stocks is not None:
-            # Iterate over selected stocks
-            for j, stock in enumerate(stocks[:min(top, len(stocks))]):
-
-                # Get the price data of the stock
-                df = get_df(stock, current_date)
-                
-                # Check if the dataframe is empty
-                if df is None or df.empty:
-                    continue
-                    
-                try:
-                    # Filter the price data of the stock and calculate returns
-                    df = df[start_date : end_date]
-
-                    # Calculate the percentage change of the stock
-                    df.loc[:, "Percent Change"] = df["Close"].pct_change()
-                    df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / df.loc[start_date, "Open"]
-
-                    # Calculate the cumulative return of the stock
-                    df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
-
-                    # Update stock count and store results in index dataframe
-                    stocks_num += 1
-                    index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
-                    index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
-                    index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
-
-                except Exception as e:
-                    print(f"Error calculating returns for {stock}: {e}.")
-                    pass
-
-            # Adjust percent change columns by the number of stocks
-            for j in range(min(top, len(stocks))):
-                column = f"Stock {j + 1} Percent Change"
-                if column in index_df.columns:
-                    index_df.loc[start_date : end_date, column] *= factor / top
+            # Initialise stock count
+            stocks_num = 0
             
-    # Initialise a new column to store the stock returns
-    index_df["Stock Percent Change"] = 0
+            if stocks is not None:
+                # Iterate over selected stocks
+                for j, stock in enumerate(stocks[:min(top, len(stocks))]):
 
-    # Calculate overall stock percent change and cumulative return
-    index_df["Stock Percent Change"] = 0
-    for i in range(top):
-        index_df.fillna({f"Stock {i + 1} Percent Change": 0}, inplace=True)
-        index_df["Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"]
-    index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
+                    # Get the price data of the stock
+                    df = get_df(stock, current_date)
+                    
+                    # Check if the dataframe is empty
+                    if df is None or df.empty:
+                        continue
+                        
+                    try:
+                        # Filter the price data of the stock and calculate returns
+                        df = df[start_date : end_date]
 
-    # Calculate cumulative returns for KNN signals if applicable
-    if knn_params is not None:
-        index_df["KNN Stock Percent Change"] = 0
-        index_df["LKNN Stock Percent Change"] = 0
+                        # Calculate the percentage change of the stock
+                        df.loc[:, "Percent Change"] = df["Close"].pct_change()
+                        df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / df.loc[start_date, "Open"]
 
+                        # Calculate the cumulative return of the stock
+                        df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+
+                        # Update stock count and store results in index dataframe
+                        stocks_num += 1
+                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
+                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
+                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
+
+                    except Exception as e:
+                        print(f"Error calculating returns for {stock}: {e}.")
+                        pass
+
+                # Adjust percent change columns by the number of stocks
+                for j in range(min(top, len(stocks))):
+                    column = f"Stock {j + 1} Percent Change"
+                    if column in index_df.columns:
+                        index_df.loc[start_date : end_date, column] *= factor / top
+                
+        # Calculate overall stock percent change and cumulative return
+        index_df["Stock Percent Change"] = 0
         for i in range(top):
-            index_df["KNN Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"] * index_df["Index KNN Signal"].shift(1)
-            index_df["LKNN Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"] * index_df["Index LKNN Signal"].shift(1)
-        index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
-        index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
+            index_df.fillna({f"Stock {i + 1} Percent Change": 0}, inplace=True)
+            index_df["Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"]
+        index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
+
+        # Calculate cumulative returns for KNN signals if applicable
+        if knn_params is not None:
+            index_df["KNN Stock Percent Change"] = 0
+            index_df["LKNN Stock Percent Change"] = 0
+
+            for i in range(top):
+                index_df["KNN Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"] * index_df["Index KNN Signal"].shift(1)
+                index_df["LKNN Stock Percent Change"] += leverage * index_df[f"Stock {i + 1} Percent Change"] * index_df["Index LKNN Signal"].shift(1)
+            index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
+            index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
 
     # Return results
     if knn_params is not None:
@@ -192,9 +191,9 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     """
     Inputs:
     - end_dates (list): List of end dates for backtesting.
-    - current_date (str): The current date for the analysis.
+    - current_date (str): The current date.
     - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the momentum strategy.
@@ -242,7 +241,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     Inputs:
     - index_df (dataframe): Contains the equity curve and performance metrics.
     - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors (list): Factors to consider in the strategy.
     - factors_group (list): List of factor combinations to evaluate.
@@ -262,49 +261,48 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Define the result folder
-    result_folder = "Backtest"
-
-    # Create a figure
-    plt.figure(figsize=(10, 6))
-    
     # Calculate the percent change of the index
     index_df["Index Percent Change"] = index_df["Close"].pct_change()
 
     # Calculate the cumulative return of the index
     index_df["Cumulative Index Return"] = (index_df["Index Percent Change"] + 1).cumprod()
 
-    # Plot the cumulative index return and cumulative stock return
-    plt.plot(index_df["Cumulative Index Return"], label=index_dict[index_name])
-    plt.plot(index_df["Cumulative Stock Return"], label=f"Stocks {factors}")
+    # Define the result folder
+    result_folder = "Backtest"
 
-    # Set the labels
-    plt.xlabel("Date")
-    plt.ylabel("Cumulative return")
+    if not plot_group:
+        # Create a figure
+        plt.figure(figsize=(10, 6))
 
-    # Set the x limit
-    plt.xlim(index_df.index[0], index_df.index[-1])
+        # Plot the cumulative index return and cumulative stock return
+        plt.plot(index_df["Cumulative Index Return"], label=index_dict[index_name])
+        plt.plot(index_df["Cumulative Stock Return"], label=f"Stocks {factors}")
 
-    # Set the title
-    plt.title("Equity curve")
+        # Set the labels
+        plt.xlabel("Date")
+        plt.ylabel("Cumulative return")
 
-    # Set the legend
-    plt.legend(loc="upper left")
+        # Set the x limit
+        plt.xlim(index_df.index[0], index_df.index[-1])
 
-    # Adjust the spacing
-    plt.tight_layout()
+        # Set the title
+        plt.title("Equity curve")
 
-    # Save the plot
-    if save:
-        plt.savefig(f"Result/Figure/{infix}eqcurve{factors}{years}itv{interval}top{top}.png", dpi=300)
-    else:
-        pass
-    
-    # Show the plot
-    plt.show()
+        # Set the legend
+        plt.legend(loc="upper left")
+
+        # Adjust the spacing
+        plt.tight_layout()
+
+        # Save the plot
+        if save:
+            plt.savefig(f"Result/Figure/{infix}eqcurve{factors}{years}itv{interval}top{top}.png", dpi=300)
+        
+        # Show the plot
+        plt.show()
         
     # Plot equity curves for all factor combinations if requested
-    if plot_group:
+    else:
         # Load the momentum dictionary if it exists
         filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}.pkl")
         if os.path.isfile(filename):
@@ -329,7 +327,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
             index_df = momentum_dict[factors_tuple]
 
             # Plot the cumulative stock return for the current factor combination
-            plt.plot(index_df["Cumulative Stock Return"], alpha=0.7)
+            plt.plot(index_df["Cumulative Stock Return"], alpha=0.5)
 
         # Set the labels
         plt.xlabel("Date")
@@ -350,18 +348,16 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         # Save the plot
         if save:
             plt.savefig(f"Result/Figure/{infix}eqcurveallyears{years}itv{interval}top{top}.png", dpi=300)
-        else:
-            pass
 
         # Show the plot   
         plt.show()
 
-# Plot the comparison between an index and stocks as a 3D graph
+# Plot the comparison between an index and stocks
 def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_values, y_values, z_values, z_index, z_label, save=False):
     """
     Inputs:
     - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - momentum_params (dict): Parameters for the momentum strategy.
     - x_values (array-like): Values for the x-axis.
@@ -392,7 +388,7 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
 
     # Set the labels
     ax.set_xlabel(r"$\mu$ (MVP)")
-    ax.set_ylabel(r"$\nu$ (EPS this Y)")
+    ax.set_ylabel(r"$\nu$ (EPS YoY)")
 
     # Create a coordinate grid for the surface plot
     xx, yy = np.meshgrid(np.linspace(min(x_values), max(x_values), 10), np.linspace(min(y_values), max(y_values), 10))
@@ -453,8 +449,6 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     # Save the plot
     if save:
         plt.savefig(f"Result/Figure/{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}.png", dpi=300)
-    else:
-        pass
 
     # Show the plot
     plt.show()
@@ -464,7 +458,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     """
     Inputs:
     - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the momentum strategy.
@@ -523,8 +517,8 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     """
     Inputs:
     - index_df (dataframe): Dataframe containing index data for analysis.
-    - index_name (str): Name of the index being analyzed.
-    - index_dict (dict): Dictionary mapping index names to their respective names.
+    - index_name (str): Name of the index being analysed.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_stats (list): Statistics of the momentum strategy.
     - momentum_params (dict): Parameters for the momentum strategy.
@@ -751,7 +745,7 @@ def calculate_stats(df, years, name=None):
     - tuple: (yearly returns, stats array)
     """
 
-    # Capitalize name for consistency
+    # Capitalise name for consistency
     name = name.capitalize() if name and name[0].islower() else name
 
     # Calculate the percent change and cumulative return
@@ -800,7 +794,7 @@ def calculate_stats(df, years, name=None):
     returns_skew = skew(returns)
     returns_kurt = kurtosis(returns)
 
-    # Organize the statistics into an array
+    # Organise the statistics into an array
     stats = np.array([total_return, return_peak, CAGR, volatility, sharpe_ratio, sortino_ratio, 
                       max_drawdown, calmar_ratio, returns_mean, returns_sd, returns_skew, returns_kurt])
     
@@ -1055,8 +1049,10 @@ def main():
                        "fee_rate": 0.001}
 
     # Create the end dates
-    end_dates = generate_end_dates(years, current_date, interval=interval)
+    end_dates = generate_end_dates(7, current_date, interval=interval)
     end_dates.append(current_date)
+    if years == 5:
+        end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
 
     # Create a group of factors
     factors_group = [[i / 20, j / 20, k / 20] 
@@ -1075,25 +1071,26 @@ def main():
             if not os.path.exists(filename):
                 create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
-    plot_momentum_equity_curve_single = False
+    plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
+        # Calculate the equity curve of a single combination of factors
+        factors = [0.2, 0.15, 0.65]
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
 
     evaluate_momentum = False
     if evaluate_momentum:
-        # # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
-        # create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
+        # Create a dictionary to store the returns of all combinations of factors of the momentum strategy
+        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
         # Save the statistics of all factors of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
     plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
-        # Calculate the equity curve of a single combination of factors
-        factors = [0.2, 0.15, 0.65]
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params)
         # Plot the equity curve of stocks of the momentum strategy
-        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, plot_group=True, save=True)
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, plot_group=True, save=True)
 
     show_momentum_stats = False
     if show_momentum_stats:
