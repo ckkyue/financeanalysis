@@ -143,7 +143,7 @@ def plot_MACD(stock, df, period=252, show=252, save=False):
     add_indicator(df)
 
     # Calculate the z-score of MACD bar
-    df = calculate_ZScore(df, ["MACD Bar"], period)
+    df = calculate_zscore(df, ["MACD Bar"], period)
 
     # Filter the data
     df = df[- show:]
@@ -213,7 +213,7 @@ def plot_MFI_RSI(stock, df, mfi_period=14, rsi_period=14, zscore_period=252, sho
     df = RSI(df, period=rsi_period)
 
     # Calculate the z-scores of MFI and RSI
-    df = calculate_ZScore(df, ["MFI", "RSI"], zscore_period)
+    df = calculate_zscore(df, ["MFI", "RSI"], zscore_period)
 
     # Filter the data
     df = df[- show:]
@@ -277,8 +277,8 @@ def plot_ADX(stock, df, period=252, show=252, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
-    # Calculate the Z-score of ADX
-    df = calculate_ZScore(df, "ADX", period)
+    # Calculate the z-score of ADX
+    df = calculate_zscore(df, "ADX", period)
 
     # Filter the data
     df = df[- show:]
@@ -347,7 +347,7 @@ def plot_volatility(stock, df, period=252, show=120, save=False):
     df["TR/ATR * Vol/SMA50"] = df["TR/ATR"] * df["Vol/SMA50"]
 
     # Calculate the z-scores of TR/ATR ratio, volume SMA 50 ratio and their product
-    df = calculate_ZScore(df, ["TR/ATR", "Vol/SMA50", "TR/ATR * Vol/SMA50"], period)
+    df = calculate_zscore(df, ["TR/ATR", "Vol/SMA50", "TR/ATR * Vol/SMA50"], period)
 
     # Filter the data
     df = df[- show:]
@@ -854,7 +854,7 @@ def plot_autocorr(stock, end_date, years):
     plt.show()
 
 # Plot the comparison between long term and short term RS
-def plot_longshortRS(merged_df, end_date1, end_date2, stock_star=None):
+def plot_longshort_rs(merged_df, end_date1, end_date2, stock_star=None):
     # Scatter plot of short-term RS against long-term RS
     plt.figure(figsize=(10, 6))
     plt.scatter(merged_df["Long-term RS"], merged_df["Short-term RS"], color="blue", marker="x")
@@ -890,7 +890,7 @@ def plot_longshortRS(merged_df, end_date1, end_date2, stock_star=None):
     plt.show()
 
 # Plot the comparison between long and short term RS
-def plot_compare_longshortRS(index_df, index_name, rs_slopes, r_squareds, end_dates, end_dates2, save=False):
+def plot_compare_longshort_rs(index_df, index_name, rs_slopes, r_squareds, end_dates, end_dates2, save=False):
     # Filter the dataframe
     index_df = index_df.loc[(index_df.index >= end_dates[0]) & (index_df.index <= end_dates[-1])]
 

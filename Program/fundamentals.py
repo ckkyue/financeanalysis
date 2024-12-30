@@ -171,10 +171,10 @@ def fundamentals_csv(stock, end_date, backtest=False):
                     os.remove(os.path.join(folder_path, f"{stock}_fundamentals_{max_date}.csv"))
         
         except Exception as e:
-            print(f"Error for {stock}: {e}")
+            print(f"Error for {stock}: {e}\n")
 
     else:
-        print(f"Fundamentals data download completed for {stock} before.")
+        print(f"Fundamentals data download completed for {stock} before.\n")
 
     # Read the fundamentals data of the stock if the file exists
     if os.path.isfile(filename):
@@ -252,10 +252,10 @@ def earning_dates_csv(stock, end_date):
                     os.remove(os.path.join(folder_path, f"{stock}_earningdates_{max_date}.csv"))
 
         except Exception as e:
-            print(f"Error for {stock}: {e}.")
+            print(f"Error for {stock}: {e}.\n")
 
     else:
-        print(f"Earning dates data download completed for {stock} before.")
+        print(f"Earning dates data download completed for {stock} before.\n")
 
     # Read the earning dates data of the stock if the file exists
     if os.path.isfile(filename):

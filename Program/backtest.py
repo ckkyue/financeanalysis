@@ -45,6 +45,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     sma_crossover = momentum_params["sma_crossover"]
     period_short = momentum_params["period_short"]
     period_long = momentum_params["period_long"]
+    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
     fee_rate = momentum_params["fee_rate"]
     leverage = momentum_params["leverage"]
@@ -56,8 +57,11 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         # Define the result folder
         result_folder = "Backtest/Stock dict"
 
+        # Define the market cap label
+        cap_label = f"cap{cap_threshold}" if cap_threshold else ""
+
         # Define the filename
-        filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
+        filename = os.path.join(result_folder, f"{infix}stock_dict{factors}{cap_label}.txt")
         
         # Attempt to load the stock dictionary from file
         try:
@@ -106,6 +110,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
 
     # Calculate percent change and cumulative return for the index
     index_df["Percent Change"] = index_df["Close"].pct_change()
+    index_df.fillna({"Percent Change": 0}, inplace=True)
     index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
     if factors is not None:
@@ -159,11 +164,11 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
 
                 # Adjust percent change columns by the number of stocks
                 for j in range(min(top, len(stocks))):
-                    column_buy = f"Buy Stock {j + 1} Percent Change"
-                    column_sell = f"Sell Stock {j + 1} Percent Change"
-                    for column in [column_buy, column_sell]:
-                        if column in index_df.columns:
-                            index_df.loc[start_date : end_date, column] *= factor / top
+                    col_buy = f"Buy Stock {j + 1} Percent Change"
+                    col_sell = f"Sell Stock {j + 1} Percent Change"
+                    for col in [col_buy, col_sell]:
+                        if col in index_df.columns:
+                            index_df.loc[start_date : end_date, col] *= factor / top
                 
         # Calculate overall stock percent change and cumulative return
         index_df["Stock Percent Change"] = 0
@@ -193,7 +198,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         result_folder = "Backtest/Equity curve"
 
         # Define the filenamefor saving the index dataframe
-        filename = os.path.join(result_folder, f"{infix}eqcurve{factors}{sma_label}{knn_label}.csv")
+        filename = os.path.join(result_folder, f"{infix}eqcurve{factors}{sma_label}{knn_label}{cap_label}.csv")
         index_df.to_csv(filename)
 
     # Return results
@@ -201,7 +206,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         return index_df, cm_test_knn_index, cm_test_lknn_index
     return index_df
 
-# Same as momentum_equity_curve, but with most inputs fixed
+# Same as momentum_equity_curve, but with inputs other than factors fixed for parallel processing
 def partial_momentum_equity_curve(args):
     """
     Inputs:
@@ -249,6 +254,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
+    cap_threshold = momentum_dict["cap_threshold"]
     top = momentum_params["top"]
     
     # Get the infix
@@ -257,8 +263,11 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Define the result folder
     result_folder = "Backtest"
 
+    # Define the market cap label
+    cap_label = f"cap{cap_threshold}" if cap_threshold else ""
+
     # Define the filename for saving the momentum dictionary
-    filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}.pkl")
+    filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{cap_label}.pkl")
 
     if multiprocessing:
         # Prepare arguments for processing each factor combination in parallel
@@ -311,26 +320,29 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
-    top = momentum_params["top"]
+    cap_threshold = momentum_params["cap_threshold"]
+    top = momentum_params["top"]    
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
-    # Calculate the percent change of the index
-    index_df["Index Percent Change"] = index_df["Close"].pct_change()
-
-    # Calculate the cumulative return of the index
-    index_df["Cumulative Index Return"] = (index_df["Index Percent Change"] + 1).cumprod()
+    # Calculate percent change and cumulative return for the index
+    index_df["Percent Change"] = index_df["Close"].pct_change()
+    index_df.fillna({"Percent Change": 0}, inplace=True)
+    index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
     # Define the result folder
     result_folder = "Backtest"
+
+    # Define the market cap label
+    cap_label = f"cap{cap_threshold}" if cap_threshold else ""
 
     if not plot_group:
         # Create a figure for the single plot
         plt.figure(figsize=(10, 6))
 
         # Plot the cumulative index return and cumulative stock return
-        plt.plot(index_df["Cumulative Index Return"], label=index_dict[index_name])
+        plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
         plt.plot(index_df["Cumulative Stock Return"], label=f"Stocks {factors}")
 
         # Set the labels
@@ -351,14 +363,14 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Save the plot
         if save:
-            plt.savefig(f"Backtest/Figure/{infix}eqcurve{factors}{years}itv{interval}top{top}.png", dpi=300)
+            plt.savefig(f"Backtest/Figure/{infix}eqcurve{factors}{years}itv{interval}top{top}{cap_label}.png", dpi=300)
         
         # Show the plot
         plt.show()
         
     else:
         # Load the momentum dictionary if it exists
-        filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}.pkl")
+        filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{cap_label}.pkl")
         if os.path.isfile(filename):
             with open(filename, "rb") as file:
                 momentum_dict = pickle.load(file)
@@ -370,7 +382,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         plt.figure(figsize=(10, 6))
 
         # Plot the cumulative index return
-        plt.plot(index_df["Cumulative Index Return"], label=index_dict[index_name])
+        plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
 
         # Iterate over all factor combinations
         for factors in tqdm(factors_group):
@@ -401,7 +413,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Save the plot
         if save:
-            plt.savefig(f"Backtest/Figure/{infix}eqcurveallyears{years}itv{interval}top{top}.png", dpi=300)
+            plt.savefig(f"Backtest/Figure/{infix}eqcurveallyears{years}itv{interval}top{top}{cap_label}.png", dpi=300)
 
         # Show the plot   
         plt.show()
@@ -429,10 +441,14 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
+    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
+
+    # Define the market cap label
+    cap_label = f"cap{cap_threshold}" if cap_threshold else ""
 
     # Create a 3D figure
     fig = plt.figure(figsize=(8, 6))
@@ -514,7 +530,7 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
 
     # Save the plot
     if save:
-        plt.savefig(f"Backtest/Figure/{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}.png", dpi=300)
+        plt.savefig(f"Backtest/Figure/{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}{cap_label}.png", dpi=300)
 
     # Show the plot
     plt.show()
@@ -537,6 +553,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
+    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
 
     # Get the infix
@@ -545,8 +562,11 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     # Define the result folder
     result_folder = "Backtest"
 
+    # Define the market cap label
+    cap_label = f"cap{cap_threshold}" if cap_threshold else ""
+
     # Define the filename for saving the statistics
-    filename = os.path.join(result_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}.npy")
+    filename = os.path.join(result_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}{cap_label}.npy")
 
     # Check if pre-existing data exists or if reanalysis is required
     if not os.path.isfile(filename) or reanalyse:
@@ -554,7 +574,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
         factors_stats = np.empty((len(factors_group), 2), dtype=object)
 
         # Define the filename for the momentum dictionary
-        momentum_dict_filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}.pkl")
+        momentum_dict_filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{cap_label}.pkl")
 
         # Load the momentum dictionary from file
         with open(momentum_dict_filename, "rb") as file:
@@ -581,7 +601,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     print("Statistics of the momentum strategy saved.")
 
 # Compare the statistics between the index and stocks selected by the momentum strategy
-def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, regression_model, save=False):
+def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, regression_model="RandomForest", save=False):
     """
     Inputs:
     - index_df (dataframe): Dataframe containing index data for analysis.
@@ -874,12 +894,12 @@ def calculate_stats(df, years, name=None):
     return returns, stats
 
 # Plot the equity curve of a given strategy
-def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
+def plot_strategy_equity_curve(stock, df, col="Cumulative Strategy Return"):
     """
     Inputs:
     - stock (str): Name of the stock being analysed.
     - df (dataframe): Dataframe containing strategy returns and buy/sell signals.
-    - column (str): Column name of the cumulative strategy return. Default to "Cumulative Strategy Return".
+    - col (str): Column name of the cumulative strategy return. Default to "Cumulative Strategy Return".
 
     Returns:
     - None: This function plots an equity curve.
@@ -889,13 +909,13 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     plt.figure(figsize=(10, 6))
 
     # Plot the cumulative strategy return
-    plt.plot(df[column])
+    plt.plot(df[col])
 
     # Plot the buy signals
-    plt.scatter(df.index[df["Buy"]], df[column][df["Buy"]], marker="^", color="green", label="Buy")
+    plt.scatter(df.index[df["Buy"]], df[col][df["Buy"]], marker="^", color="green", label="Buy")
     
     # Plot the sell signals
-    plt.scatter(df.index[df["Sell"]], df[column][df["Sell"]], marker="v", color="red", label="Sell")
+    plt.scatter(df.index[df["Sell"]], df[col][df["Sell"]], marker="v", color="red", label="Sell")
 
     # Set the title
     plt.title(f"Equity curve for {stock}")
@@ -908,7 +928,7 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     plt.xlim(df.index[0], df.index[-1])
 
     # Set the legend
-    plt.legend([column] + ["Buy", "Sell"])
+    plt.legend([col] + ["Buy", "Sell"])
 
     # Adjust the spacing
     plt.tight_layout()
@@ -917,21 +937,21 @@ def plot_strategy_equity_curve(stock, df, column="Cumulative Strategy Return"):
     plt.show()
 
 # SMA strategy implementation
-def SMA_strategy(df, period_buy=200, period_sell=200, column="Close"):
+def SMA_strategy(df, period_buy=200, period_sell=200, col="Close"):
     """
     Inputs:
     - df (dataframe): Dataframe containing price data.
     - period_buy (int): Period for SMA calculation used to generate buy signals. Default to 200.
     - period_sell (int): Period for SMA calculation used to generate sell signals. Default to 200.
-    - column (str): Column name for price data. Default to "Close".
+    - col (str): Column name for price data. Default to "Close".
 
     Returns:
     - df (dataframe): Modified dataframe with "Buy" and "Sell" signals.
     """
 
     # Calculate the SMA
-    df[f"SMA {period_buy}"] = SMA(df, period_buy, column=column)
-    df[f"SMA {period_sell}"] = SMA(df, period_sell, column=column)
+    df[f"SMA {period_buy}"] = SMA(df, period_buy, column=col)
+    df[f"SMA {period_sell}"] = SMA(df, period_sell, column=col)
 
     # Identify buy and sell conditions based on the price crossing the SMA
     buy_conds = (df["Close"] >= df[f"SMA {period_buy}"]) & (df["Close"].shift(1) < df[f"SMA {period_buy}"].shift(1))
@@ -972,12 +992,12 @@ def SMA_strategy(df, period_buy=200, period_sell=200, column="Close"):
     return df
 
 # RSI strategy implementation
-def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
+def RSI_strategy(df, period=14, col="Close", oversold=30, overbought=70):
     """
     Inputs:
     - df (dataframe): Dataframe containing price data.
     - period (int): Look-back period for RSI calculation. Default to 14.
-    - column (str): Column name for price data. Default to "Close".
+    - col (str): Column name for price data. Default to "Close".
     - oversold (float): RSI level indicating oversold conditions. Default to 30.
     - overbought (float): RSI level indicating overbought conditions. Default to 70.
 
@@ -986,7 +1006,7 @@ def RSI_strategy(df, period=14, column="Close", oversold=30, overbought=70):
     """
 
     # Calculate the RSI
-    df = RSI(df, period=period, column=column)
+    df = RSI(df, period=period, column=col)
 
     # Identify buy and sell conditions based on RSI levels
     buy_conds = (df["RSI"] <= oversold) & (df["RSI"].shift(1) > oversold)
@@ -1112,9 +1132,11 @@ def main():
     # Parameters for backtesting the momentum strategy
     years = 7
     interval = "1w"
+    cap_threshold = False
     top = 5
     momentum_params = {"years": years, 
                        "interval": interval, 
+                       "cap_threshold": cap_threshold, 
                        "top": top, 
                        "period_short": 1, 
                        "period_long": 200, 
@@ -1125,6 +1147,7 @@ def main():
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
     end_dates.append(current_date)
+    end_dates = [date for date in end_dates if date <= "2020-09-18"]
     if years == 5:
         end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
 
@@ -1137,13 +1160,7 @@ def main():
     recreate_stock_dict = False
     for factors in tqdm(factors_group):
         if recreate_stock_dict:
-            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
-        else:
-            # Define the result folder
-            result_folder = "Backtest/Stock dict"
-            filename = os.path.join(result_folder, f"{infix}stock_dict{factors}.txt")
-            if not os.path.exists(filename):
-                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
+            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
     evaluate_momentum = False
     if evaluate_momentum:
@@ -1153,10 +1170,11 @@ def main():
         # Save the statistics of all factor combinations of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
-    plot_momentum_equity_curve_single = False
+    plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.2, 0.15, 0.65]
+        create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
 
@@ -1168,8 +1186,11 @@ def main():
 
     show_momentum_stats = False
     if show_momentum_stats:
+        # Define the market cap label
+        cap_label = f"cap{cap_threshold}" if cap_threshold else ""
+
         # Load the statistics of all factor combinations
-        factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}.npy", allow_pickle=True)
+        factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{cap_label}.npy", allow_pickle=True)
 
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
@@ -1178,7 +1199,7 @@ def main():
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
         # Compare the statistics between the index and stocks selected by the momentum strategy
-        compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, "RandomForest", save=True)
+        compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, save=True)
     
     index_corr_ta = False
     if index_corr_ta:

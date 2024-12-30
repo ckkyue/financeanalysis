@@ -107,7 +107,7 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
         return rs_dfs, volume_dfs, rs_volume_dfs
 
 # Combine the long term and short term RS dataframes
-def longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix, volume_filter=None):
+def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix, volume_filter=None):
     # Convert inputs to lists
     if not isinstance(end_dates1, list):
         end_dates1 = [end_dates1]
@@ -167,7 +167,7 @@ def longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, current_da
     return merged_dfs[0] if len(merged_dfs) == 1 else merged_dfs
 
 # Compare the long and short term RS
-def compare_longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates, period1, period2, result_folder, infix):
+def compare_longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates, period1, period2, result_folder, infix):
     # Initialize two empty lists to store the RS slopes and R^2 values
     rs_slopes = []
     r_squareds = []
@@ -183,7 +183,7 @@ def compare_longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, cu
     periods2 = [period2] * len(end_dates2)
 
     # Get the merged dataframe
-    merged_dfs = longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix)
+    merged_dfs = longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix)
     
     # Iterate over merged dataframe
     for merged_df in merged_dfs:

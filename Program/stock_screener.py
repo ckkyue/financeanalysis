@@ -486,7 +486,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         writer._save()
 
 # Create the stock dictionary
-def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, backtest=False):
+def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, cap_threshold=False, backtest=False):
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
@@ -499,8 +499,11 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
     else:
         result_folder = "Result"
 
+    # Define the market cap label
+    cap_label = f"cap{cap_threshold}" if cap_threshold else ""
+
     # Load the stock dictionary if it exists
-    stock_dict_filename = os.path.join(result_folder, f"Stock dict/{infix}stock_dict{factors}.txt")
+    stock_dict_filename = os.path.join(result_folder, f"Stock dict/{infix}stock_dict{factors}{cap_label}.txt")
     if os.path.isfile(stock_dict_filename):
         with open(stock_dict_filename, "r") as file:
             stock_dict = ast.literal_eval(file.read())
@@ -509,6 +512,8 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
     for end_date in end_dates[:-1]:
         # Format the end date
         end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+
+        # Define the filename
         filename = os.path.join(result_folder, f"{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
 
         # Read the data of the screened stocks
@@ -516,6 +521,17 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
 
         # Calculate the EM rating
         df = EM_rating(index_name, df, factors)
+
+        # Identify the column of market cap
+        market_cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
+        if market_cap_col:
+            market_cap_col = market_cap_col[0]
+
+            # Apply market cap threshold if required
+            if cap_threshold:
+                df = df[df[market_cap_col] > 10]
+        else:
+            raise ValueError("'Market Cap' column not found in the dataframe.")
 
         # Extract the number of stocks
         stocks_num = df.shape[0]
@@ -554,7 +570,7 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks 
     RS = 90
-    factors = [0.2, 0.15, 0.65]
+    factors = [1, 1, 1]
     backtest = True
 
     # Index
