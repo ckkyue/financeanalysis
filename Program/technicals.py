@@ -483,8 +483,8 @@ def calculate_retracement(data, min_column="Low", max_column="High", buffer=15):
 
     return np.array([local_min1, local_max, retracement])
 
-# Calculate the Z-Score
-def calculate_ZScore(data, indicators, zscore_period):
+# Calculate the z-score
+def calculate_zscore(data, indicators, zscore_period):
     # Convert inputs to lists
     if not isinstance(indicators, list):
         indicators = [indicators]
