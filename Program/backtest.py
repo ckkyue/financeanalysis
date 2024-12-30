@@ -42,7 +42,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     """
 
     # Extract parameters from the momentum strategy
-    SMA_crossover = momentum_params["SMA_crossover"]
+    sma_crossover = momentum_params["sma_crossover"]
     period_short = momentum_params["period_short"]
     period_long = momentum_params["period_long"]
     top = momentum_params["top"]
@@ -75,7 +75,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     index_df = get_df(index_name, current_date)
 
     # Calculate moving averages if required
-    if SMA_crossover:
+    if sma_crossover:
         for i in [period_short, period_long]:
             index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
             index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
@@ -118,7 +118,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             stocks = stocks_list[i]
 
             # Determine if short SMA is above long SMA or if crossover check is disabled
-            if SMA_crossover:
+            if sma_crossover:
                 sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
             else:
                 sma_cond = True
@@ -186,7 +186,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
 
     # Save the index dataframe
     if save:
-        sma_label = f"sma{period_short}_{period_long}" if SMA_crossover else ""
+        sma_label = f"sma{period_short}_{period_long}" if sma_crossover else ""
         knn_label = f"k{k}lb{lookback}" if knn_params is not None else ""
 
         # Define the result folder
@@ -1118,7 +1118,7 @@ def main():
                        "top": top, 
                        "period_short": 1, 
                        "period_long": 200, 
-                       "SMA_crossover": False, 
+                       "sma_crossover": False, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
 

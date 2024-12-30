@@ -127,8 +127,8 @@ def longshortRS(stocks, index_df, index_name, index_dict, NASDAQ_all, current_da
     # Iterate over all combinations
     for end_date1, end_date2, period1, period2 in zip(end_dates1, end_dates2, periods1, periods2):
         # Filter the data
-        index_df1 = index_df[index_df.index <= end_date1]
-        index_df2 = index_df[index_df.index <= end_date2]
+        index_df1 = index_df[index_df.index < end_date1]
+        index_df2 = index_df[index_df.index < end_date2]
 
         # Calculate the percent change of the index
         index_df1.loc[:, "Percent Change"] = index_df1["Close"].pct_change()

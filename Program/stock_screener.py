@@ -164,7 +164,7 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
 
         # Preprocess stock data
         # Filter the data
-        df = df[df.index <= end_date]
+        df = df[df.index < end_date]
 
         # RS rating and volume SMA 5 rank
         RS_rating, volume_sma5_rank = get_rs_volume(stock, rs_volume_df)
@@ -414,7 +414,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         index_df = get_df(index_name, current_date)
 
         # Filter the data
-        index_df = index_df[index_df.index <= end_date]
+        index_df = index_df[index_df.index < end_date]
 
         # Calculate the percent change of the index
         index_df["Percent Change"] = index_df["Close"].pct_change()
@@ -563,6 +563,7 @@ def main():
 
     # Get the current date
     current_date = get_current_date(start, index_name)
+    current_date = "2024-12-27"
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval="1w")
