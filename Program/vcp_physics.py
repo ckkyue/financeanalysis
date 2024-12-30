@@ -125,8 +125,8 @@ ax2.legend()
 # Adjust the spacing between subplots
 plt.tight_layout()
 
-# # Save the plot
-# plt.savefig("Result/Figure/vcpphysicsA1gamma1k10.png", dpi=300)
+# Save the plot
+plt.savefig("Result/Figure/vcpA1gamma1k10.png", dpi=300)
 
 # Show the plot
 plt.show()
