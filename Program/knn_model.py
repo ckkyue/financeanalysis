@@ -191,6 +191,9 @@ def main():
     # Set the legend
     plt.legend(loc="upper left")
 
+    # Adjust the spacing
+    plt.tight_layout()
+
     # # Save the plot
     # plt.savefig(f"Result/Figure/{infix}equitycurvelknn{factors}k{k}lb{lookback}top{top}.png", dpi=300)
 
