@@ -52,7 +52,7 @@ def get_current_date(start, index_name):
             return (start - dt.timedelta(days=1)).strftime("%Y-%m-%d")
     
 # Generate a list of end dates
-def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
+def generate_end_dates(years, current_date, interval="1m", shift=0, index_name="^GSPC"):
     # Validate the interval format
     match = re.match(r"(\d+)([a-zA-Z])", interval)
     if not match:
@@ -88,18 +88,18 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
         # Loop to generate end dates
         while current_date_int <= current:
             if unit == "w":
-                week_start = current_date_int
-                week_end = week_start + relativedelta(weeks=1, days=-1)
+                week_start = current_date_int + relativedelta(days=shift)
+                week_end = week_start + relativedelta(weeks=1, days=-1) + relativedelta(days=shift)
                 first_trading_date = df.loc[(df.index >= week_start) & (df.index <= week_end)].index.min()
             elif unit == "m":
-                month_start = current_date_int
-                month_end = month_start + relativedelta(months=1, days=-1)
+                month_start = current_date_int + relativedelta(days=shift)
+                month_end = month_start + relativedelta(months=1, days=-1) + relativedelta(days=shift)
                 first_trading_date = df.loc[(df.index >= month_start) & (df.index <= month_end)].index.min()
             elif unit == "y":
-                year_start = current_date_int
-                year_end = year_start + relativedelta(years=1, days=-1)
+                year_start = current_date_int + relativedelta(days=shift)
+                year_end = year_start + relativedelta(years=1, days=-1) + relativedelta(days=shift)
                 first_trading_date = df.loc[(df.index >= year_start) & (df.index <= year_end)].index.min()
-            if first_trading_date is not None:
+            if pd.notna(first_trading_date):
                 end_dates.append(first_trading_date.strftime("%Y-%m-%d"))
                 
             current_date_int += increment
