@@ -37,7 +37,7 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
                     continue
                 
                 # Filter the data
-                df = df[df.index <= end_date]
+                df = df[df.index < end_date]
 
                 # Calculate the percent change of the stock
                 df["Percent Change"] = df["Close"].pct_change()

@@ -7,7 +7,6 @@ from helper_functions import get_current_date, generate_end_dates, get_df, get_i
 import itertools
 import matplotlib.pyplot as plt
 import multiprocessing
-from multiprocessing import Pool
 import numpy as np
 import os
 import pandas as pd
@@ -35,7 +34,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors (list): Factors to consider in the strategy.
     - momentum_params (dict): Parameters for the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
+    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
 
     Returns:
     - index_df (dataframe): Contains the equity curve and performance metrics.
@@ -202,8 +201,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         return index_df, cm_test_knn_index, cm_test_lknn_index
     return index_df
 
-# Processes a set of factors to compute the equity curve for the momentum strategy
-def calculate_equity_curve_for_factors(args):
+# Same as momentum_equity_curve, but with most inputs fixed
+def partial_momentum_equity_curve(args):
     """
     Inputs:
     - args (tuple): A tuple containing the following elements:
@@ -211,28 +210,26 @@ def calculate_equity_curve_for_factors(args):
         - current_date (str): The current date.
         - index_name (str): Name of the index being analysed.
         - index_dict (dict): Dictionary mapping index symbols to their respective names.
-        - NASDAQ_all (bool): Whether to include all stocks in NASDAQ.
-        - factors (list): List of factors to evaluate.
+        - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
+        - factors (list): Factors to consider in the strategy.
         - momentum_params (dict): Parameters for the momentum strategy.
-        - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
+        - knn_params (dict, optional): Parameters for the KNN model. Default to None.
 
     Returns:
     - tuple: A tuple containing:
         - factors (tuple): The factors used for the analysis.
-        - index_df (dataframe): Datadrame with columns ["Close", "Stock Percent Change", "Cumulative Stock Return"].
+        - index_df (dataframe): Dataframe with columns ["Close", "Stock Percent Change", "Cumulative Stock Return"].
     """
 
     end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params = args
 
-    # Calculate the equity curve based on the provided factors and parameters
+    # Calculate the equity curve
     index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
     
-    # Return the factors as a tuple along with the relevant DataFrame
     return tuple(factors), index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
-
 # Create a dictionary to store the returns of all factor combinations for the momentum strategy
-def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None):
+def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, multiprocessing=True):
     """
     Inputs:
     - end_dates (list): List of end dates for backtesting.
@@ -242,7 +239,8 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     - NASDAQ_all (bool): Whether to include all stocks in NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
+    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
+    - multiprocessing (bool, optional): Whether to use multiprocessing to speed up the process. Default to True.
 
     Returns:
     - None: This function saves a dictionary of equity curves.
@@ -262,29 +260,31 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Define the filename for saving the momentum dictionary
     filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}.pkl")
 
-    # # Initialise an empty dictionary to store the equity curves for each combination of factors
-    # momentum_dict = {}
+    if multiprocessing:
+        # Prepare arguments for processing each factor combination in parallel
+        args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params) for factors in factors_group]
 
-    # # Iterate over all factor combinations
-    # for factors in tqdm(factors_group):
-    #     # Get the equity curve for the current combination of factors
-    #     index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
+        # Create a pool of worker processes to fetch the equity curves
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            results = list(tqdm(pool.imap(partial_momentum_equity_curve, args_list), total=len(args_list)))
 
-    #     # Convert the list of factors to a tuple for the dictionary key
-    #     factors_tuple = tuple(factors)
+        # Create a dictionary to map each factor combination to its equity curve
+        momentum_dict = dict(results)
 
-    #     # Store the equity curve in the dictionary
-    #     momentum_dict[factors_tuple] = index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
+    else:
+        # Initialise an empty dictionary to store the equity curves for each combination of factors
+        momentum_dict = {}
 
-    # Prepare arguments for processing each factor combination in parallel
-    args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params) for factors in factors_group]
+        # Iterate over all factor combinations
+        for factors in tqdm(factors_group):
+            # Get the equity curve for the current combination of factors
+            index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
 
-    # Create a pool of worker processes to fetch the equity curves
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-        results = list(tqdm(pool.imap(calculate_equity_curve_for_factors, args_list), total=len(args_list)))
+            # Convert the list of factors to a tuple for the dictionary key
+            factors_tuple = tuple(factors)
 
-    # Create a dictionary to map each factor combination to its computed equity curve
-    momentum_dict = dict(results)
+            # Store the equity curve in the dictionary
+            momentum_dict[factors_tuple] = index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
     # Save the momentum dictionary to a file
     with open(filename, "wb") as file:
@@ -301,8 +301,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     - factors (list): Factors to consider in the strategy.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the momentum strategy.
-    - plot_group (bool): Whether to plot equity curves for all factor combinations. Defaults to False.
-    - save (bool): Whether to save the plot as a file. Defaults to False.
+    - plot_group (bool): Whether to plot equity curves for all factor combinations. Default to False.
+    - save (bool): Whether to save the plot as a file. Default to False.
 
     Returns:
     - None: This function generates and displays a plot of the equity curve.
@@ -808,7 +808,7 @@ def calculate_stats(df, years, name=None):
     Inputs:
     - df (dataframe): Dataframe with a "Close" column.
     - years (int): Number of years for CAGR and other metrics.
-    - name (str): Name of the strategy. Defaults to None.
+    - name (str): Name of the strategy. Default to None.
 
     Returns:
     - tuple: (yearly returns, stats array)
@@ -921,8 +921,8 @@ def SMA_strategy(df, period_buy=200, period_sell=200, column="Close"):
     """
     Inputs:
     - df (dataframe): Dataframe containing price data.
-    - period_buy (int): Period for SMA calculation used to generate buy signals. Defaults to 200.
-    - period_sell (int): Period for SMA calculation used to generate sell signals. Defaults to 200.
+    - period_buy (int): Period for SMA calculation used to generate buy signals. Default to 200.
+    - period_sell (int): Period for SMA calculation used to generate sell signals. Default to 200.
     - column (str): Column name for price data. Default to "Close".
 
     Returns:
@@ -1034,7 +1034,7 @@ def test_strategy(stock, df, end_date, years, fee_rate=0.001):
     - df (dataframe): Dataframe containing price data.
     - end_date (str): The end date for strategy testing in "YYYY-MM-DD" format.
     - years (int): Number of years to test the strategy.
-    - fee_rate (float): Transaction fee rate. Defaults to 0.001.
+    - fee_rate (float): Transaction fee rate. Default to 0.001.
 
     Returns:
     - None: This function performs calculations and plots an equity curve.
@@ -1145,7 +1145,7 @@ def main():
             if not os.path.exists(filename):
                 create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, backtest=backtest)
 
-    evaluate_momentum = True
+    evaluate_momentum = False
     if evaluate_momentum:
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
