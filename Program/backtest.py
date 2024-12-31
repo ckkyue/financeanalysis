@@ -1147,7 +1147,6 @@ def main():
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
     end_dates.append(current_date)
-    end_dates = [date for date in end_dates if date <= "2020-09-18"]
     if years == 5:
         end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
 
