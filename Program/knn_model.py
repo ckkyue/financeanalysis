@@ -149,6 +149,21 @@ def main():
     factors_group = [[i / 20, j / 20, k / 20] 
                      for i, j, k in itertools.product(range(21), repeat=3) 
                      if i + j + k == 20]
+    
+    # Parameters for backtesting the momentum strategy
+    years = 7
+    interval = "1w"
+    top = 5
+    cap_threshold = 1
+    momentum_params = {"years": years, 
+                       "interval": interval, 
+                       "top": top, 
+                       "cap_threshold": cap_threshold, 
+                       "period_short": 1, 
+                       "period_long": 200, 
+                       "sma_crossover": False, 
+                       "leverage": 1, 
+                       "fee_rate": 0.001}
 
     # Parameters of the KNN model
     top = 5
@@ -160,7 +175,7 @@ def main():
     knn_params = {"k": k, "lookback": lookback, "features": features}
 
     # Get the equity curve of the KNN model
-    index_df, cm_test_knn_index, cm_test_lknn_index = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, top, knn_params=knn_params)
+    index_df, cm_test_knn_index, cm_test_lknn_index = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params)
         
     # Plot the equity curve of the KNN model
     # Create a figure
