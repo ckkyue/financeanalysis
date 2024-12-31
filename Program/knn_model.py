@@ -1,5 +1,5 @@
 # Imports
-from backtest import calculate_stats, momentum_equity_curve
+from backtest import calculate_stats, get_momentum_labels, momentum_equity_curve
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
@@ -21,7 +21,7 @@ def lorentzian_metric(arr1, arr2):
     dxi = arr1[1:] - arr2[1:]
 
     # Compute the Lorentzian distance
-    distance =  - dx0 ** 2 + np.sum(dxi ** 2) + 10
+    distance =  - dx0**2 + np.sum(dxi**2) + 10
 
     return distance
 
@@ -172,10 +172,15 @@ def main():
     lookbacks = [1, 2]
     lookback = 1
     features = ["Close", "SMA 50 Ratio", "MFI", "ADX"]
-    knn_params = {"k": k, "lookback": lookback, "features": features}
+    knn_params = {"k": k, 
+                  "lookback": lookback, 
+                  "features": features}
+    
+    # Get the labels of the momentum strategy
+    sma_label, knn_label, cap_label = get_momentum_labels(momentum_params, knn_params)
 
     # Get the equity curve of the KNN model
-    index_df, cm_test_knn_index, cm_test_lknn_index = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params)
+    index_df, cm_test_knn_index, cm_test_lknn_index = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
         
     # Plot the equity curve of the KNN model
     # Create a figure
@@ -210,7 +215,7 @@ def main():
     plt.tight_layout()
 
     # # Save the plot
-    # plt.savefig(f"Result/Figure/{infix}equitycurvelknn{factors}k{k}lb{lookback}top{top}.png", dpi=300)
+    # plt.savefig(f"Backtest/Figure/{infix}eqcurvelknn{factors}top{top}{sma_label}{knn_label}{cap_label}.png", dpi=300)
 
     # Show the plot
     plt.show()
