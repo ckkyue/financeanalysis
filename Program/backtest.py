@@ -1132,7 +1132,7 @@ def main():
     # Parameters for backtesting the momentum strategy
     years = 7
     interval = "1w"
-    cap_threshold = False
+    cap_threshold = 1
     top = 5
     momentum_params = {"years": years, 
                        "interval": interval, 
@@ -1172,7 +1172,7 @@ def main():
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
-        factors = [0.2, 0.15, 0.65]
+        factors = [0.25, 0.15, 0.65]
         create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)

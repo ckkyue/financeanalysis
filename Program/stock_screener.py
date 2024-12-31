@@ -486,7 +486,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         writer._save()
 
 # Create the stock dictionary
-def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, cap_threshold=False, backtest=False):
+def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, cap_threshold=1, backtest=False):
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
@@ -529,7 +529,7 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
 
             # Apply market cap threshold if required
             if cap_threshold:
-                df = df[df[market_cap_col] > 10]
+                df = df[df[market_cap_col] >= cap_threshold]
         else:
             raise ValueError("'Market Cap' column not found in the dataframe.")
 
