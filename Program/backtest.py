@@ -1178,7 +1178,7 @@ def main():
 
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "1w"
+    interval = "1m"
     top = 5
     cap_threshold = 1
     momentum_params = {"years": years, 
@@ -1202,6 +1202,7 @@ def main():
     end_dates.append(current_date)
     if years == 5:
         end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
+    end_dates = [date for date in end_dates if date <= "2024-08-02"]
 
     # Create a group of factors
     factors_group = [[i / 20, j / 20, k / 20] 
