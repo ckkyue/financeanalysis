@@ -45,8 +45,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     sma_crossover = momentum_params["sma_crossover"]
     period_short = momentum_params["period_short"]
     period_long = momentum_params["period_long"]
-    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
+    cap_threshold = momentum_params["cap_threshold"]
     fee_rate = momentum_params["fee_rate"]
     leverage = momentum_params["leverage"]
 
@@ -254,9 +254,9 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
-    cap_threshold = momentum_dict["cap_threshold"]
     top = momentum_params["top"]
-    
+    cap_threshold = momentum_dict["cap_threshold"]
+
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
 
@@ -320,8 +320,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
-    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]    
+    cap_threshold = momentum_params["cap_threshold"]
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
@@ -441,8 +441,8 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
-    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
+    cap_threshold = momentum_params["cap_threshold"]
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
@@ -553,8 +553,8 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     # Extract parameters from the momentum strategy
     years = momentum_params["years"]
     interval = momentum_params["interval"]
-    cap_threshold = momentum_params["cap_threshold"]
     top = momentum_params["top"]
+    cap_threshold = momentum_params["cap_threshold"]
 
     # Get the infix
     infix = get_infix(index_name, index_dict, NASDAQ_all)
@@ -1132,17 +1132,20 @@ def main():
     # Parameters for backtesting the momentum strategy
     years = 7
     interval = "1w"
-    cap_threshold = 1
     top = 5
+    cap_threshold = 1
     momentum_params = {"years": years, 
                        "interval": interval, 
-                       "cap_threshold": cap_threshold, 
                        "top": top, 
+                       "cap_threshold": cap_threshold, 
                        "period_short": 1, 
                        "period_long": 200, 
                        "sma_crossover": False, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
+    
+    # Parameters of the KNN model
+    knn_params = None
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
@@ -1172,7 +1175,7 @@ def main():
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
-        factors = [0.25, 0.15, 0.65]
+        factors = [0.2, 0.15, 0.65]
         create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
