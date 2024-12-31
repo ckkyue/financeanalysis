@@ -166,15 +166,47 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                         # Calculate the percentage change of the stock
                         df.loc[:, "Percent Change"] = df["Close"].pct_change()
                         df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
-                        df.loc[end_date, "Percent Change"] =  ((1 - fee_rate) * df.loc[end_date, "Open"] - df["Close"].shift(1).loc[end_date]) / df["Close"].shift(1).loc[end_date]
 
                         # Calculate the cumulative return of the stock
                         df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
 
+                        # Consider stop loss 
+                        sell_date = None
+                        stoploss_active = False
+                        stoploss_threshold = None
+
+                        # If cumulative return drops below the stop loss threshold, exit position
+                        if stoploss_threshold is not None:
+                            df["Stopped Out"] = df["Cumulative Return"].shift(1) < (1 - stoploss_threshold)
+
+                            # Iterate through the price data to handle stop loss
+                            for idx in df.index:
+                                if stoploss_active:
+                                    # After stopped out, set the percent change to 0
+                                    df.loc[idx, "Percent Change"] = 0
+                                elif df.loc[idx, "Stopped Out"]:
+                                    # Apply stop-loss and record the sell date
+                                    stoploss_active = True
+                                    sell_date = idx
+                                    df.loc[idx, "Percent Change"] = ((1 - fee_rate) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
+                            
+                            # If no stop-loss, assign the end_date as sell_date
+                            if sell_date is None:
+                                sell_date = end_date
+                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+
+                            # Calculate the cumulative return of the stock again
+                            df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+                        
+                        else:
+                            sell_date = end_date
+                            df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+
                         # Store results in index dataframe
                         index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
-                        index_df.loc[start_date : end_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
-                        index_df.loc[end_date, f"Sell Stock {str(j + 1)} Percent Change"] = df.loc[end_date, "Percent Change"]
+                        index_df.loc[start_date : sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
+                        index_df.loc[sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = 0
+                        index_df.loc[sell_date, f"Sell Stock {str(j + 1)} Percent Change"] = df.loc[sell_date, "Percent Change"]
                         index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
 
                     except Exception as e:
