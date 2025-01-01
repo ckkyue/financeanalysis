@@ -187,7 +187,7 @@ def main():
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
 
-    plot_all = True
+    plot_all = False
     if plot_all:
         # Iterate over all indices and sectors
         for ticker in index_names + sectors:
@@ -244,7 +244,7 @@ def main():
         # Plot the relative rotation graph
         plot_rrg(sectors, sector_dict, index_df, "sector", save=True)
 
-    plot_all_jdk = True
+    plot_all_jdk = False
     if plot_all_jdk:
         # Iterate over all sectors
         for sector in sectors:
@@ -295,7 +295,7 @@ def main():
         # Visualize the closing price history and other technical indicators
         plot_market_breadth(index_name, index_df, tickers, save=True)
         plot_close(index_name, index_df, MVP_VCP=False)
-        plot_MFI_RSI(index_name, index_df, 252, save=True)
+        plot_MFI_RSI(index_name, index_df, save=True)
     
     plot_vix = True
     if plot_vix:

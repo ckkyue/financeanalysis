@@ -138,12 +138,12 @@ def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_ext
     plt.show()
 
 # Plot the MACD indicator
-def plot_MACD(stock, df, period=252, show=252, save=False):
+def plot_MACD(stock, df, zscore_period=252, show=252, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
     # Calculate the z-score of MACD bar
-    df = calculate_zscore(df, ["MACD Bar"], period)
+    df = calculate_zscore(df, ["MACD Bar"], zscore_period)
 
     # Filter the data
     df = df[- show:]
@@ -273,12 +273,12 @@ def plot_MFI_RSI(stock, df, mfi_period=14, rsi_period=14, zscore_period=252, sho
     plt.show()
 
 # Plot the ADX indicator
-def plot_ADX(stock, df, period=252, show=252, save=False):
+def plot_ADX(stock, df, zscore_period=252, show=252, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
     # Calculate the z-score of ADX
-    df = calculate_zscore(df, "ADX", period)
+    df = calculate_zscore(df, "ADX", zscore_period)
 
     # Filter the data
     df = df[- show:]
@@ -333,7 +333,7 @@ def plot_ADX(stock, df, period=252, show=252, save=False):
     plt.show()
 
 # Plot the volatility
-def plot_volatility(stock, df, period=252, show=120, save=False):
+def plot_volatility(stock, df, zscore_period=252, show=120, save=False):
     # Add technical indicators to the data
     add_indicator(df)
 
@@ -347,7 +347,7 @@ def plot_volatility(stock, df, period=252, show=120, save=False):
     df["TR/ATR * Vol/SMA50"] = df["TR/ATR"] * df["Vol/SMA50"]
 
     # Calculate the z-scores of TR/ATR ratio, volume SMA 50 ratio and their product
-    df = calculate_zscore(df, ["TR/ATR", "Vol/SMA50", "TR/ATR * Vol/SMA50"], period)
+    df = calculate_zscore(df, ["TR/ATR", "Vol/SMA50", "TR/ATR * Vol/SMA50"], zscore_period)
 
     # Filter the data
     df = df[- show:]
@@ -974,7 +974,7 @@ def plot_compare_longshort_rs(index_df, index_name, rs_slopes, r_squareds, end_d
     plt.show()
 
 # Plot the 5-min intraday volume of a stock on a specific date
-def plot_volume5m(stock, volume5m_data, date, period=50, save=False):
+def plot_volume5m(stock, volume5m_data, date, sma_period=50, save=False):
     # Extract the data
     if volume5m_data is None:
         return
@@ -992,7 +992,7 @@ def plot_volume5m(stock, volume5m_data, date, period=50, save=False):
     ax1.bar(df0_hours, df_date["Volume"], width=5/60/2, label="5-min Volume", align="edge", alpha=0.7)
 
     # Plot the 5-min volume SMA 50 on the first subplot
-    ax1.plot(sma_hours, volume5m_sma_df0.values, label=f"SMA {period}", color="purple")
+    ax1.plot(sma_hours, volume5m_sma_df0.values, label=f"SMA {sma_period}", color="purple")
 
     # Calculate the ratio of the first 5-min volume with SMA 50
     ratio = df_date["Volume"].iloc[0] / volume5m_sma_df0.values[0]
