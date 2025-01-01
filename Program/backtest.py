@@ -38,7 +38,7 @@ def get_momentum_labels(momentum_params, knn_params):
         lookback = knn_params["lookback"]
 
     # Construct the labels
-    sma_label = f"sma{period_short}_{period_long}" if sma_crossover else ""
+    sma_label = f"sma{period_short}x{period_long}" if sma_crossover else ""
     knn_label = f"k{k}lb{lookback}" if knn_params is not None else ""
     cap_label = f"cap{cap_threshold}" if cap_threshold else ""
     sl_label = f"sl{stoploss_threshold * 100:.0f}" if stoploss_threshold else ""
@@ -1202,7 +1202,7 @@ def main():
                        "stoploss_threshold": stoploss_threshold, 
                        "period_short": 1, 
                        "period_long": 200, 
-                       "sma_crossover": False, 
+                       "sma_crossover": True, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
     
@@ -1240,7 +1240,7 @@ def main():
         # Save the statistics of all factor combinations of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]

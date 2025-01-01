@@ -1,7 +1,7 @@
 # Imports
 import datetime as dt
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
-from backtest import calculate_stats
+from backtest import calculate_stats, get_momentum_labels
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import t
@@ -46,14 +46,18 @@ def main():
 
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "1w"
+    interval = "2w"
     top = 5
+    cap_threshold = 10
+    stoploss_threshold = None
     momentum_params = {"years": years, 
                        "interval": interval, 
                        "top": top, 
+                       "cap_threshold": cap_threshold, 
+                       "stoploss_threshold": stoploss_threshold, 
                        "period_short": 1, 
                        "period_long": 200, 
-                       "SMA_crossover": False, 
+                       "sma_crossover": False, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
     
@@ -62,6 +66,12 @@ def main():
     end_dates.append(current_date)
     if years == 5:
         end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
+
+    # Parameters of the KNN model
+    knn_params = None
+
+    # Get the labels of the momentum strategy
+    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
 
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
@@ -73,7 +83,7 @@ def main():
     infix = get_infix("^GSPC", index_dict, True)
 
     # Load the statistics of all factors
-    factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}.npy", allow_pickle=True)
+    factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
 
     # Compare the statistics between the index and stocks selected by the momentum strategy
     # Initialise lists to store various statistics
