@@ -1242,17 +1242,17 @@ def main():
     plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
-        factors = [0.2, 0.15, 0.65]
+        factors = [0.05, 0.8, 0.15]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
 
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
