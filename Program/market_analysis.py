@@ -93,7 +93,7 @@ def screen_excel(excel_filename, sector_excel_classification):
     print(f"Changes made to the Excel file {excel_filename}.")
 
 # Calculate the retracement for stocks
-def retracement_excel(excel_filename, end_date, min_column="Low", max_column="High", period=5, buffer=15):
+def retracement_excel(excel_filename, end_date, col_min="Low", col_max="High", period=5, buffer=15):
     # Read the screened stocks
     df = pd.read_excel(excel_filename)
 
@@ -107,12 +107,12 @@ def retracement_excel(excel_filename, end_date, min_column="Low", max_column="Hi
     # Iterate over all stocks
     for stock in stocks:
         data = get_df(stock, end_date)
-        data = get_local_extrema(data, min_column=min_column, max_column=max_column, period=period)
+        data = get_local_extrema(data, col_min=col_min, col_max=col_max, period=period)
         data["Percent Change"] = data["Close"].pct_change()
-        data["Percent Change SMA 5"] = SMA(data, 5, "Percent Change")
+        data["Percent Change SMA 5"] = SMA(data, 5, col="Percent Change")
         SMA_5_slope = data["Percent Change SMA 5"].iloc[-1]
         SMA_5_slopes.append(SMA_5_slope)
-        local_min1, local_max, retracement = calculate_retracement(data, min_column=min_column, max_column=max_column, buffer=buffer)
+        local_min1, local_max, retracement = calculate_retracement(data, col_min=col_min, col_max=col_max, buffer=buffer)
         retracements.append(retracement)
 
     SMA_5_slopes = np.array(SMA_5_slopes)
@@ -251,7 +251,7 @@ def main():
             # Plot the JdK RS-Ratio and Momentum of the sector
             plot_JdK(sector, sector_dict, index_df, save=True)
 
-    sector_selected = True
+    sector_selected = False
     if sector_selected:
         # Plot the sectors of the selected stocks
         plot_sector_selected(current_date, "^GSPC", index_dict, NASDAQ_all=NASDAQ_all, save=True)
@@ -263,7 +263,7 @@ def main():
 
         retracement_excel(excel_filename, current_date)
 
-    screen_us = True
+    screen_us = False
     if screen_us:
         # Get the Excel filename
         excel_filename = get_excel_filename(current_date, "^GSPC", index_dict, period_hk, period_us, RS, NASDAQ_all, result_folder)
@@ -271,7 +271,7 @@ def main():
         # Screen the stocks from Excel file
         screen_excel(excel_filename, sector_excel_classification)
 
-    screen_hk = True
+    screen_hk = False
     if screen_hk:
         # Get the Excel filename
         excel_filename = get_excel_filename(get_current_date(start, "^HSI"), "^HSI", index_dict, period_hk, period_us, RS - 10, NASDAQ_all, result_folder)

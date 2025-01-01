@@ -52,8 +52,8 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
                     print(f"Stock: {stock} ; Return multiple against {index_shortName}: {round(return_mul, 2)}\n")
                 
                 # Calculate the moving averages of volume
-                df["Volume SMA 5"] = SMA(df, 5, column="Volume")
-                df["Volume SMA 20"] = SMA(df, 20, column="Volume")
+                df["Volume SMA 5"] = SMA(df, 5, col="Volume")
+                df["Volume SMA 20"] = SMA(df, 20, col="Volume")
                 volume_smas[stock] = {"Volume SMA 5": df["Volume SMA 5"].iloc[-1], "Volume SMA 20": df["Volume SMA 20"].iloc[-1]}
 
             except Exception as e:
@@ -196,19 +196,19 @@ def compare_longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, c
     return rs_slopes, r_squareds, end_dates2
 
 # Calculate the simple moving average (SMA)
-def SMA(data, period, column="Close"):
-    return data[column].rolling(window=period).mean()
+def SMA(data, period, col="Close"):
+    return data[col].rolling(window=period).mean()
 
 # Calculate the exponential moving average (EMA)
-def EMA(data, period, column="Close"):
-    return data[column].ewm(span=period, adjust=False).mean()
+def EMA(data, period, col="Close"):
+    return data[col].ewm(span=period, adjust=False).mean()
 
 # Get the volatility
-def get_volatility(data, periods=[20, 60], column="Close"):
+def get_volatility(data, periods=[20, 60], col="Close"):
     data_copy = data.copy()
 
     # Calculate the percent change of the stock
-    data_copy.loc[:, "Percent Change"] = data_copy[column].pct_change()
+    data_copy.loc[:, "Percent Change"] = data_copy[col].pct_change()
 
     # Calculate the volatility
     for period in periods:
@@ -217,12 +217,12 @@ def get_volatility(data, periods=[20, 60], column="Close"):
     return data
 
 # Calculate the average true range (ATR)
-def ATR(data, period=14, column="Close"):
+def ATR(data, period=14, col="Close"):
     # Calculate the true range (TR)
     TR = pd.concat([
         abs(data["High"] - data["Low"]),
-        abs(data["High"] - data[column].shift()),
-        abs(data["Low"] - data[column].shift())
+        abs(data["High"] - data[col].shift()),
+        abs(data["Low"] - data[col].shift())
         ], axis=1).max(axis=1)
     
     # Calculate the ATR by EMA of TR
@@ -233,18 +233,18 @@ def ATR(data, period=14, column="Close"):
     return data
 
 # Calculate the moving average convergence/divergence (MACD)
-def MACD(data, period_long, period_short, period_signal, column="Close"):
+def MACD(data, period_long, period_short, period_signal, col="Close"):
     # Calculate the short EMA
-    EMA_short = EMA(data, period_short, column=column)
+    EMA_short = EMA(data, period_short, col=col)
 
     # Calculate the long EMA
-    EMA_long = EMA(data, period_long, column=column)
+    EMA_long = EMA(data, period_long, col=col)
 
     # Calculate the MACD
     data["MACD"] = EMA_short - EMA_long
 
     # Calculate the signal line
-    data["MACD Signal Line"] = EMA(data, period_signal, column="MACD")
+    data["MACD Signal Line"] = EMA(data, period_signal, col="MACD")
 
     # Calculate the MACD bar
     data["MACD Bar"] = data["MACD"] - data["MACD Signal Line"]
@@ -252,9 +252,9 @@ def MACD(data, period_long, period_short, period_signal, column="Close"):
     return data
 
 # Calculate the Relative Strength Index (RSI)
-def RSI(data, period=14, column="Close"):
+def RSI(data, period=14, col="Close"):
     # Calculate the change of the stock
-    data["Change"] = data[column].diff()
+    data["Change"] = data[col].diff()
 
     # Calculate the gains and losses
     gain = data["Change"].copy()
@@ -272,11 +272,11 @@ def RSI(data, period=14, column="Close"):
     return data
 
 # Calculate the Relative Momentum Index (RMI)
-def RMI(data, period=20, momentum=3, column="Close"):
+def RMI(data, period=20, momentum=3, col="Close"):
     data_copy = data.copy()
 
     # Calculate the change of the stock
-    data_copy["Change"] = data_copy[column].diff(momentum)[momentum:]
+    data_copy["Change"] = data_copy[col].diff(momentum)[momentum:]
 
     # Calculate the gains and losses
     gain = data_copy["Change"].copy()
@@ -348,24 +348,24 @@ def ADX(data, period=14):
                                 data_copy["Low"].shift() - data_copy["Low"], 0)
 
     # Calculate the +DI and -DI by EMA of +DM and -DM, divided by ATR
-    data_copy["+DI"] = EMA(data_copy, period, column="+DM") / data_copy["ATR"]
-    data_copy["-DI"] = EMA(data_copy, period, column="-DM") / data_copy["ATR"]
+    data_copy["+DI"] = EMA(data_copy, period, col="+DM") / data_copy["ATR"]
+    data_copy["-DI"] = EMA(data_copy, period, col="-DM") / data_copy["ATR"]
 
     # Calculate the DX
     data_copy["DX"] = (np.abs(data_copy["+DI"] - data_copy["-DI"]) / (data_copy["+DI"] + data_copy["-DI"])) * 100
 
     # Calculate the ADX
-    data["ADX"] = EMA(data_copy, period, column="DX")
+    data["ADX"] = EMA(data_copy, period, col="DX")
 
     return data
 
 # Calcualte the OB/OS indicator (OBOS)
-def OBOS(data, period=14, column="Close"):
+def OBOS(data, period=14, col="Close"):
     data_copy = data.copy()
 
     # Calculate the highest and lowest closing price over the past period
-    data_copy["HC"] = data_copy[column].rolling(window=period).max()
-    data_copy["LC"] = data_copy[column].rolling(window=period).min()
+    data_copy["HC"] = data_copy[col].rolling(window=period).max()
+    data_copy["LC"] = data_copy[col].rolling(window=period).min()
 
     # Calculate the OB/OS indicator
     data["OBOS"] = (data_copy["Close"] - data_copy["LC"]) / (data_copy["HC"] - data_copy["LC"]) * 100
@@ -373,7 +373,7 @@ def OBOS(data, period=14, column="Close"):
     return data
 
 # Calculate the MVP/VCP indicator
-def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, column="Close"):
+def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col="Close"):
     data_copy = data.copy()
     
     # Check if the M, V, and P conditions are met
@@ -397,15 +397,15 @@ def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col
     data["MVP Rating"] = ((1 / 3 * data[f"M past {period}"]) + (2 / 3 * (data[f"MV past {period}"] + data[f"MP past {period}"])) + data[f"MVP past {period}"]) / 60 * 100
 
     # Calculate the highest, median, and lowest closing price over the past period
-    data_copy["HC"] = data_copy[column].rolling(window=period_VCP).max()
-    data_copy["MC"] = data_copy[column].rolling(window=period_VCP).median()
-    data_copy["LC"] = data_copy[column].rolling(window=period_VCP).min()
+    data_copy["HC"] = data_copy[col].rolling(window=period_VCP).max()
+    data_copy["MC"] = data_copy[col].rolling(window=period_VCP).median()
+    data_copy["LC"] = data_copy[col].rolling(window=period_VCP).min()
 
     # Check if the highest and lowest closing prices differ by less than contraction
     data["VCP"] = (1 - data_copy["LC"] / data_copy["HC"]) <= contraction
 
     # Check if pivot breakout occurs
-    data["Pivot breakout"] = data_copy[column] > 1 / 3 * (data_copy["HC"] + data_copy["MC"] + data_copy["LC"])
+    data["Pivot breakout"] = data_copy[col] > 1 / 3 * (data_copy["HC"] + data_copy["MC"] + data_copy["LC"])
 
     # Check if the volume is shrinking
     data["Volume shrinking"] = data_copy["Volume"].rolling(window=period_VCP).apply(slope_reg) < 0
@@ -413,14 +413,14 @@ def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col
     return data
 
 # Check follow-through day (FTD) and distribution day (DD)
-def FTD_DD(data, period=50, threshold=0.015, column="Close"):
+def FTD_DD(data, period=50, threshold=0.015, col="Close"):
     # Check FTD
-    data["FTD"] = (data[column] > (1 + threshold) * data[column].shift(1)) \
+    data["FTD"] = (data[col] > (1 + threshold) * data[col].shift(1)) \
         & (data["Volume"] > data["Volume"].shift(1)) \
         & (data["Volume"] > data["Volume"].rolling(window=period).mean())
     
     # Check DD
-    data["DD"] = (data[column] < (1 - threshold) * data[column].shift(1)) \
+    data["DD"] = (data[col] < (1 - threshold) * data[col].shift(1)) \
     & (data["Volume"] > data["Volume"].shift(1)) \
     & (data["Volume"] > data["Volume"].rolling(window=period).mean())
 
@@ -431,10 +431,10 @@ def FTD_DD(data, period=50, threshold=0.015, column="Close"):
     return data
 
 # Locate the local extrema
-def get_local_extrema(data, min_column="Low", max_column="High", period=5):
+def get_local_extrema(data, col_min="Low", col_max="High", period=5):
     # Find local minima and maxima
-    local_min = data[min_column].rolling(period, center=True, min_periods=2).min() == data[min_column]
-    local_max = data[max_column].rolling(period, center=True, min_periods=2).max() == data[max_column]
+    local_min = data[col_min].rolling(period, center=True, min_periods=2).min() == data[col_min]
+    local_max = data[col_max].rolling(period, center=True, min_periods=2).max() == data[col_max]
 
     # Create new columns for local min and max locations
     data["Local Min"] = local_min
@@ -443,7 +443,7 @@ def get_local_extrema(data, min_column="Low", max_column="High", period=5):
     return data
 
 # Calculate the most recent retracement
-def calculate_retracement(data, min_column="Low", max_column="High", buffer=15):
+def calculate_retracement(data, col_min="Low", col_max="High", buffer=15):
     # Find indices of local mins and maxes
     min_indices = data[data["Local Min"]].index
     max_indices = data[data["Local Max"]].index
@@ -468,10 +468,10 @@ def calculate_retracement(data, min_column="Low", max_column="High", buffer=15):
     if len(max_index_list) < 1:
         return None
     
-    local_min1 = data.loc[min_index1, min_column]
+    local_min1 = data.loc[min_index1, col_min]
     
     # Retrieve local max values
-    local_max_values = [data.loc[index, max_column] for index in max_index_list]
+    local_max_values = [data.loc[index, col_max] for index in max_index_list]
     local_max = local_max_values[0]
 
     # Check conditions for local_max2 and local_max3
@@ -520,25 +520,25 @@ def add_indicator(data):
     for i in periods:
         data[f"SMA {str(i)}"] = SMA(data, i)
         data[f"EMA {str(i)}"] = EMA(data, i)
-        data[f"Volume SMA {str(i)}"] = SMA(data, i, column="Volume")
+        data[f"Volume SMA {str(i)}"] = SMA(data, i, col="Volume")
 
     return data
 
 # Preprocess the data to get the market breadth and AD line
-def trend_AD(data, periods=[20, 50, 200], column="Close"):
+def trend_AD(data, periods=[20, 50, 200], col="Close"):
     data_copy = data.copy()
 
     # Calculate the SMAs
     for i in periods:
-        data_copy[f"SMA {str(i)}"] = SMA(data_copy, i, column=column)
+        data_copy[f"SMA {str(i)}"] = SMA(data_copy, i, col=col)
 
         # Check if the closing price is above SMAs
         data[f"Above SMA {str(i)}"] = 0
-        data.loc[data_copy[column] > data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 1
-        data.loc[data_copy[column] <= data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 0
+        data.loc[data_copy[col] > data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 1
+        data.loc[data_copy[col] <= data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 0
 
     # Calculate the change of the stock
-    data_copy["Change"] = data_copy[column].diff()
+    data_copy["Change"] = data_copy[col].diff()
 
     # Initialize the advancing (A) and declining (D) columns
     data["A"] = 0
@@ -627,7 +627,7 @@ def check_bgu(df):
     atr = df["ATR"].iloc[-1]
 
     # Calculate the 50 days volume
-    df["Volume SMA 50"] = SMA(df, 50, column="Volume")
+    df["Volume SMA 50"] = SMA(df, 50, col="Volume")
     volume_sma50 = df["Volume SMA 50"].iloc[-1]
 
     # Calculate the gap up price
@@ -639,22 +639,22 @@ def check_bgu(df):
     return round(price_bgu, 2), round(volume_bgu, 2)
 
 # Filter out the outlier of the dataframe
-def filter_df_outlier(df, column, zscore, greater=True):
+def filter_df_outlier(df, col, zscore, greater=True):
     # Extract the column
-    arr = df[column].dropna()
+    arr = df[col].dropna()
 
     # Calculate the mean, SD
     mean = np.mean(arr)
     sd = np.std(arr)
 
     # Filter the dataframe
-    df[f"{column} Z-Score"] = (df[column] - mean) / sd
+    df[f"{col} Z-Score"] = (df[col] - mean) / sd
     if greater:
-        df_inlier = df[df[f"{column} Z-Score"] < zscore]
-        df_outlier = df[df[f"{column} Z-Score"] >= zscore]
+        df_inlier = df[df[f"{col} Z-Score"] < zscore]
+        df_outlier = df[df[f"{col} Z-Score"] >= zscore]
     else:
-        df_inlier = df[df[f"{column} Z-Score"] > zscore]
-        df_outlier = df[df[f"{column} Z-Score"] <= zscore]
+        df_inlier = df[df[f"{col} Z-Score"] > zscore]
+        df_outlier = df[df[f"{col} Z-Score"] <= zscore]
 
     return df_inlier, df_outlier
 

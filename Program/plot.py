@@ -16,14 +16,14 @@ from technicals import *
 # Visualize the closing price history
 def plot_close(stock, df, show=120, MVP_VCP=True, local_extrema=False, local_extrema_period=5, FTD_DD=False, save=False):
     # Check for candlestick columns
-    columns_cs = ["High", "Low", "Open"]
-    cond_cs = all(column in df.columns for column in columns_cs)
+    cols_cs = ["High", "Low", "Open"]
+    cond_cs = all(col in df.columns for col in cols_cs)
     
     # Add technical indicators to the data
     if cond_cs:
         df = add_indicator(df)
     else:
-        print(f"Missing columns: {', '.join([column for column in columns_cs if column not in df.columns])}. Candlestick chart not created.")
+        print(f"Missing columns: {', '.join([col for col in cols_cs if col not in df.columns])}. Candlestick chart not created.")
 
     # Find the local extrema
     if local_extrema:
@@ -537,7 +537,7 @@ def plot_market_breadth(index_name, index_df, stocks, periods=[20, 50, 200], sho
     plt.show()
 
 # Plot to compare the closing price history of stocks
-def plot_stocks(stocks, current_date, column="Close", show=120, save=False):
+def plot_stocks(stocks, current_date, col="Close", show=120, save=False):
     # Merge dataframes of stocks
     df_merged = merge_stocks(stocks, current_date)
 
@@ -549,8 +549,8 @@ def plot_stocks(stocks, current_date, column="Close", show=120, save=False):
 
     # Plot the closing price history of the stocks
     for stock in stocks:
-        close_first = df_merged[f"{column} ({stock})"].iloc[0]
-        plt.plot(100 / close_first * df_merged[f"{column} ({stock})"], label=f"{stock} (scaled)")
+        close_first = df_merged[f"{col} ({stock})"].iloc[0]
+        plt.plot(100 / close_first * df_merged[f"{col} ({stock})"], label=f"{stock} (scaled)")
 
     # Set the x limit
     plt.xlim(df_merged.index[0], df_merged.index[-1])
@@ -581,13 +581,13 @@ def plot_JdK(sector, sector_dict, index_df, show=120, save=False):
     index_df = index_df[- show:]
 
     # Extract the columns
-    columns = [f"{sector} JdK RS-Ratio", f"{sector} JdK RS-Momentum"]
+    cols = [f"{sector} JdK RS-Ratio", f"{sector} JdK RS-Momentum"]
 
     # Create a figure with two subplots, one for the JdK RS-Ratio and one for JdK RS-Momentum
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [1, 1]}, sharex=True)
 
     # Plot the JdK RS-Ratio on the top subplot
-    ax1.plot(index_df[columns[0]], label=columns[0])
+    ax1.plot(index_df[cols[0]], label=cols[0])
     ax1.axhline(y=100, linestyle="dotted", color="black")
 
     # Set the y label of the top subplot
@@ -600,7 +600,7 @@ def plot_JdK(sector, sector_dict, index_df, show=120, save=False):
     ax1.legend()
 
     # Plot the JdK RS-Momentum on the bottom subplot
-    ax2.plot(index_df[columns[1]], label=columns[1])
+    ax2.plot(index_df[cols[1]], label=cols[1])
 
     # Add a horizontal dotted line at 100 to the bottom subplot
     ax2.axhline(y=100, linestyle="dotted", color="black")
@@ -761,15 +761,15 @@ def plot_sector_selected(end_date, index_name, index_dict, period=252, RS=90, NA
     plt.show()
 
 # Plot the correlation matrix of technical indicators
-def plot_corr_ta(stock, df, column_list=["Open", "High", "Low", "Close", "Volume", "MACD", "RSI", "RMI", "CCI", "ADX", "MFI", "OBOS"]):
+def plot_corr_ta(stock, df, cols=["Open", "High", "Low", "Close", "Volume", "MACD", "RSI", "RMI", "CCI", "ADX", "MFI", "OBOS"]):
     # Extract the data
-    data = df.copy().dropna()[column_list].values
+    data = df.copy().dropna()[cols].values
 
     # Calculate the correlation matrix
     correlation_matrix = np.corrcoef(data, rowvar=False)
 
     # Create a heatmap to visualize the correlation matrix
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", xticklabels=column_list, yticklabels=column_list)
+    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", xticklabels=cols, yticklabels=cols)
     plt.title(f"Correlation matrix of techinical indicators of {stock}")
     plt.show()
 
@@ -1046,12 +1046,12 @@ def plot_volume5m(stock, volume5m_data, date, period=50, save=False):
     plt.show()
 
 # Plot the n days dist
-def plot_ndays_dist(df, column, title, xlabel, figure_name=None, save=False):
+def plot_ndays_dist(df, col, title, xlabel, figure_name=None, save=False):
     # Define the result folder
     result_folder = "Result/Figure"
 
     # Extract the array
-    arr = df[column]
+    arr = df[col]
 
     # Create a figure
     plt.figure(figsize=(10, 6))

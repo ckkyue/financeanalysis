@@ -323,9 +323,9 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
 def EM_rating(index_name, data, factors):
     # Define the target columns based on index name
     if index_name == "^HSI":
-        target_columns = ["MVP Rating", "Estimated EPS growth (%)", "Earnings this Q (%)"]
+        cols = ["MVP Rating", "Estimated EPS growth (%)", "Earnings this Q (%)"]
     else:
-        target_columns = ["MVP Rating", "EPS this Y (%)", "EPS Q/Q (%)"]
+        cols = ["MVP Rating", "EPS this Y (%)", "EPS Q/Q (%)"]
 
     data_copy = data.copy()
 
@@ -340,22 +340,22 @@ def EM_rating(index_name, data, factors):
     scaler = MinMaxScaler()
 
     # Normalize the first column
-    data_copy[target_columns[0]] = scaler.fit_transform(data_copy[target_columns[0]].values.reshape(-1, 1))
+    data_copy[cols[0]] = scaler.fit_transform(data_copy[cols[0]].values.reshape(-1, 1))
 
     # Apply log1p and MinMaxScaler to the last two columns
-    for column in target_columns[1:]:
-        min_value = data_copy[column].min()
+    for col in cols[1:]:
+        min_value = data_copy[col].min()
         if min_value < 0:
             # Minus the minimum value before applying log1p
-            data_copy[column] = np.log1p(data_copy[column] - min_value)
+            data_copy[col] = np.log1p(data_copy[col] - min_value)
         else:
-            data_copy[column] = np.log1p(data_copy[column])
+            data_copy[col] = np.log1p(data_copy[col])
             
         # Normalize the last two columns
-        data_copy[column] = scaler.fit_transform(data_copy[column].values.reshape(-1, 1))
+        data_copy[col] = scaler.fit_transform(data_copy[col].values.reshape(-1, 1))
 
     # Calculate the weighted average for each row and multiply by 100
-    data["EM Rating"] = (data_copy[target_columns] * factors / np.sum(factors)).sum(axis=1) * 100
+    data["EM Rating"] = (data_copy[cols] * factors / np.sum(factors)).sum(axis=1) * 100
 
     # Sort the EM ratings in descending order
     data = data.sort_values("EM Rating", ascending=False)
@@ -570,7 +570,7 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks 
     RS = 90
-    factors = [1, 1, 1]
+    factors = [0.2, 0.15, 0.65]
     backtest = True
 
     # Index

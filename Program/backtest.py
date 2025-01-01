@@ -143,7 +143,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             start_date, end_date = end_dates[i], end_dates[i + 1]
             stocks = stocks_list[i]
 
-            # Determine if short SMA is above long SMA or if crossover check is disabled
+            # Determine if short SMA is above long SMA or if SMA crossover is disabled
             if sma_crossover:
                 sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
             else:
@@ -659,6 +659,7 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_stats (list): Statistics of the momentum strategy.
     - momentum_params (dict): Parameters for the momentum strategy.
+    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
     - save (bool): If True, save the comparison plots.
     
@@ -1180,7 +1181,7 @@ def main():
 
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "1w"
+    interval = "2w"
     top = 5
     cap_threshold = 1
     momentum_params = {"years": years, 
@@ -1237,7 +1238,7 @@ def main():
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
 
-    show_momentum_stats = False
+    show_momentum_stats = True
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.npy", allow_pickle=True)
