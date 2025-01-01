@@ -540,13 +540,13 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
         df = EM_rating(index_name, df, factors)
 
         # Identify the column of market cap
-        market_cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
-        if market_cap_col:
-            market_cap_col = market_cap_col[0]
+        cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
+        if cap_col:
+            cap_col = cap_col[0]
 
             # Apply market cap threshold if required
             if cap_threshold:
-                df = df[df[market_cap_col] >= cap_threshold]
+                df = df[df[cap_col] >= cap_threshold]
         else:
             raise ValueError("'Market Cap' column not found in the dataframe.")
 
