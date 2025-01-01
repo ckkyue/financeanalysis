@@ -1,5 +1,5 @@
 # StockAnalysis
-This repository contains Python scripts designed to identify potential high-growth stocks using various technical indicators. The screener allows you to select stocks listed on the following exchanges:
+This repository contains Python scripts designed to identify potential high-growth stocks. The screener allows you to select stocks listed on the following exchanges:
 
 - **Hong Kong Exchanges and Clearing Limited (HKEX)**
 - **NASDAQ**
