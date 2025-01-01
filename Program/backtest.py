@@ -894,11 +894,15 @@ def calculate_stats(df, years, name=None):
     - tuple: (yearly returns, stats array)
     """
 
+    # Filter the data
+    df = df.tail(int(years * 252))
+
     # Capitalise name for consistency
     name = name.capitalize() if name and name[0].islower() else name
 
     # Calculate the percent change and cumulative return of the original dataframe
     df["Percent Change"] = df["Close"].pct_change()
+    df.fillna({"Percent Change": 0}, inplace=True)
     df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
 
     # Calculate the percent change and cumulative return of the strategy
@@ -1202,7 +1206,7 @@ def main():
                        "stoploss_threshold": stoploss_threshold, 
                        "period_short": 1, 
                        "period_long": 200, 
-                       "sma_crossover": True, 
+                       "sma_crossover": False, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
     
@@ -1237,8 +1241,8 @@ def main():
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-        # Save the statistics of all factor combinations of the momentum strategy
-        save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    # Save the statistics of all factor combinations of the momentum strategy
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
     plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
