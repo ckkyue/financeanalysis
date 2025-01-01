@@ -1232,13 +1232,13 @@ def main():
             if not os.path.isfile(stock_dict_filename):
                 create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
-    evaluate_momentum = True
+    evaluate_momentum = False
     if evaluate_momentum:
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-        # Save the statistics of all factor combinations of the momentum strategy
-        save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    # Save the statistics of all factor combinations of the momentum strategy
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params, reanalyse=True)
 
     plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
@@ -1247,13 +1247,13 @@ def main():
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_all = False
+    plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
 
-    show_momentum_stats = False
+    show_momentum_stats = True
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
