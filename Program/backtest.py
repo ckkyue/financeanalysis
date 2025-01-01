@@ -245,13 +245,14 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
             index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
 
-    # Save the index dataframe
-    if save:
-        # Define the result folder
-        result_folder = "Backtest/Equity curve"
+    # Define the result folder
+    result_folder = "Backtest/Equity curve"
 
-        # Define the filename for saving the index dataframe
-        filename = os.path.join(result_folder, f"{infix}eqcurve{factors}years{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+    # Define the filename for saving the index dataframe
+    filename = os.path.join(result_folder, f"{infix}eqcurve{factors}years{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+
+    # Save the index dataframe
+    if not os.path.isfile(filename) or save:
         index_df.to_csv(filename)
 
     # Return results
@@ -1190,9 +1191,9 @@ def main():
 
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "2w"
+    interval = "1w"
     top = 5
-    cap_threshold = 10
+    cap_threshold = 1
     stoploss_threshold = None
     momentum_params = {"years": years, 
                        "interval": interval, 
@@ -1231,7 +1232,7 @@ def main():
             if not os.path.isfile(stock_dict_filename):
                 create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
-    evaluate_momentum = False
+    evaluate_momentum = True
     if evaluate_momentum:
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)

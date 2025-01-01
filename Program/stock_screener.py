@@ -320,47 +320,64 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
         return None
     
 # Calculate the EM rating
-def EM_rating(index_name, data, factors):
+def EM_rating(index_name, df, factors, cap_threshold=10):
     # Define the target columns based on index name
     if index_name == "^HSI":
         cols = ["MVP Rating", "Estimated EPS growth (%)", "Earnings this Q (%)"]
     else:
         cols = ["MVP Rating", "EPS this Y (%)", "EPS Q/Q (%)"]
 
-    data_copy = data.copy()
+    df_copy = df.copy()
 
     # Extract the number of stocks
-    stocks_num = data_copy.shape[0]
+    stocks_num = df_copy.shape[0]
 
     # Skip if the number of stocks is less than or equal to 1
     if stocks_num <= 1:
-        return data
+        return df
 
-    # Initialize the MinMaxScaler
+    # Initialise the MinMaxScaler
     scaler = MinMaxScaler()
 
-    # Normalize the first column
-    data_copy[cols[0]] = scaler.fit_transform(data_copy[cols[0]].values.reshape(-1, 1))
+    # Normalise the first column
+    df_copy[cols[0]] = scaler.fit_transform(df_copy[cols[0]].values.reshape(-1, 1))
 
     # Apply log1p and MinMaxScaler to the last two columns
     for col in cols[1:]:
-        min_value = data_copy[col].min()
+        min_value = df_copy[col].min()
         if min_value < 0:
             # Minus the minimum value before applying log1p
-            data_copy[col] = np.log1p(data_copy[col] - min_value)
+            df_copy[col] = np.log1p(df_copy[col] - min_value)
         else:
-            data_copy[col] = np.log1p(data_copy[col])
+            df_copy[col] = np.log1p(df_copy[col])
             
-        # Normalize the last two columns
-        data_copy[col] = scaler.fit_transform(data_copy[col].values.reshape(-1, 1))
+        # Normalise the last two columns
+        df_copy[col] = scaler.fit_transform(df_copy[col].values.reshape(-1, 1))
 
     # Calculate the weighted average for each row and multiply by 100
-    data["EM Rating"] = (data_copy[cols] * factors / np.sum(factors)).sum(axis=1) * 100
+    df["EM Rating"] = (df_copy[cols] * factors / np.sum(factors)).sum(axis=1) * 100
 
-    # Sort the EM ratings in descending order
-    data = data.sort_values("EM Rating", ascending=False)
-    
-    return data
+    # Identify the column of market cap
+    market_cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
+    if market_cap_col:
+        market_cap_col = market_cap_col[0]
+
+        # Split the dataframe based on cap_threshold
+        if cap_threshold:
+            df_high_cap = df[df[market_cap_col] >= cap_threshold]
+            df_low_cap = df[df[market_cap_col] < cap_threshold]
+
+            # Sort both dataframes by EM Rating in descending order
+            df_high_cap = df_high_cap.sort_values("EM Rating", ascending=False)
+            df_low_cap = df_low_cap.sort_values("EM Rating", ascending=False)
+
+            # Combine the two dataframes
+            df = pd.concat([df_high_cap, df_low_cap])
+        else:
+            # Sort the EM ratings in descending order if no cap_threshold
+            df = df.sort_values("EM Rating", ascending=False)
+
+    return df
 
 # Select the stocks
 def select_stocks(end_dates, current_date, index_name, index_dict, 
@@ -570,8 +587,8 @@ def main():
     period_hk = 60 # Period for HK stocks
     period_us = 252 # Period for US stocks 
     RS = 90
-    factors = [1, 1, 1]
-    backtest = True
+    factors = [0.05, 0.8, 0.15]
+    backtest = False
 
     # Index
     index_name = "^GSPC"
