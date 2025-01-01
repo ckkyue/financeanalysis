@@ -52,13 +52,14 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
-    - factors (list): Factors to consider in the strategy.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - factors (list): Factor combination of the strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
+    - save (bool): Whether to save the equity curve as a file. Default to False.
 
     Returns:
-    - index_df (dataframe): Contains the equity curve and performance metrics.
-    - Optional: Confusion matrices for KNN models if "knn_params" is provided.
+    - index_df (dataframe): Contains the equity curve.
+    - Optional: Confusion matrices for KNN model if "knn_params" is provided.
     """
 
     # Extract parameters from the momentum strategy
@@ -187,12 +188,12 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                                     # After stopped out, set the percent change to 0
                                     df.loc[idx, "Percent Change"] = 0
                                 elif df.loc[idx, "Stopped Out"]:
-                                    # Apply stop-loss and record the sell date
+                                    # Apply stop loss and record the sell date
                                     stoploss_active = True
                                     sell_date = idx
                                     df.loc[idx, "Percent Change"] = ((1 - fee_rate) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
                             
-                            # If no stop-loss, assign the end_date as sell_date
+                            # If no stop loss, assign the end_date as sell_date
                             if sell_date is None:
                                 sell_date = end_date
                                 df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
@@ -204,7 +205,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                             sell_date = end_date
                             df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
 
-                        # Store results in index dataframe
+                        # Store results in the index dataframe
                         index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
                         index_df.loc[start_date : sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
                         index_df.loc[sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = 0
@@ -231,7 +232,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             index_df["Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"])
         index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
-        # Calculate cumulative returns for KNN signals if applicable
+        # Calculate cumulative returns for KNN signals
         if knn_params is not None:
             index_df["KNN Stock Percent Change"] = 0
             index_df["LKNN Stock Percent Change"] = 0
@@ -247,7 +248,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         # Define the result folder
         result_folder = "Backtest/Equity curve"
 
-        # Define the filenamefor saving the index dataframe
+        # Define the filename for saving the index dataframe
         filename = os.path.join(result_folder, f"{infix}eqcurve{factors}years{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.csv")
         index_df.to_csv(filename)
 
@@ -267,12 +268,12 @@ def partial_momentum_equity_curve(args):
         - index_dict (dict): Dictionary mapping index symbols to their respective names.
         - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
         - factors (list): Factors to consider in the strategy.
-        - momentum_params (dict): Parameters for the momentum strategy.
+        - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
         - knn_params (dict, optional): Parameters for the KNN model. Default to None.
 
     Returns:
     - tuple: A tuple containing:
-        - factors (tuple): The factors used for the analysis.
+        - factors (tuple): Factor combination of the strategy.
         - index_df (dataframe): Dataframe with columns ["Close", "Stock Percent Change", "Cumulative Stock Return"].
     """
 
@@ -293,9 +294,9 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks in NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
-    - multiprocessing (bool, optional): Whether to use multiprocessing to speed up the process. Default to True.
+    - speedup (bool, optional): Whether to use multiprocessing to speed up the process. Default to True.
 
     Returns:
     - None: This function saves a dictionary of equity curves.
@@ -356,9 +357,9 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks in NASDAQ.
-    - factors (list): Factors to consider in the strategy.
+    - factors (list): Factor combination of the strategy.
     - factors_group (list): List of factor combinations to evaluate.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - plot_group (bool): Whether to plot equity curves for all factor combinations. Default to False.
     - save (bool): Whether to save the plot as a file. Default to False.
@@ -474,7 +475,7 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - x_values (array-like): Values for the x-axis.
     - y_values (array-like): Values for the y-axis.
     - z_values (array-like): Values for the z-axis.
@@ -592,7 +593,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - reanalyse (bool): If True, reanalyze and overwrite existing data. Default to False.
 
@@ -658,7 +659,7 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - NASDAQ_all (bool): Whether to include all stocks of NASDAQ.
     - factors_stats (list): Statistics of the momentum strategy.
-    - momentum_params (dict): Parameters for the momentum strategy.
+    - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
     - save (bool): If True, save the comparison plots.
@@ -1202,7 +1203,6 @@ def main():
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
-    end_dates.append(current_date)
     if years == 5:
         end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
 
