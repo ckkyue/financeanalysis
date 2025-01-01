@@ -1181,9 +1181,9 @@ def main():
 
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "2w"
+    interval = "1w"
     top = 5
-    cap_threshold = 1
+    cap_threshold = 10
     momentum_params = {"years": years, 
                        "interval": interval, 
                        "top": top, 
@@ -1208,7 +1208,7 @@ def main():
 
     # Create a group of factors
     factors_group = [[i / 20, j / 20, k / 20] 
-                     for i, j, k in itertools.product(range(21), repeat=3) 
+                     for i, j, k in itertools.product(range(21), repeat=3)
                      if i + j + k == 20]
 
     # Create the stock dictionary for all factor comnbinations
@@ -1216,6 +1216,10 @@ def main():
     for factors in tqdm(factors_group):
         if recreate_stock_dict:
             create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
+        else:
+            stock_dict_filename = f"Backtest/Stock dict/{infix}stock_dict{factors}{cap_label}.txt"
+            if not os.path.isfile(stock_dict_filename):
+                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
     evaluate_momentum = True
     if evaluate_momentum:
@@ -1238,7 +1242,7 @@ def main():
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
 
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.npy", allow_pickle=True)
