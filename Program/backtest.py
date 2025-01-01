@@ -62,10 +62,12 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     """
 
     # Extract parameters from the momentum strategy
+    years = momentum_params["years"]
+    interval = momentum_params["interval"]
+    top = momentum_params["top"]
     sma_crossover = momentum_params["sma_crossover"]
     period_short = momentum_params["period_short"]
     period_long = momentum_params["period_long"]
-    top = momentum_params["top"]
     fee_rate = momentum_params["fee_rate"]
     leverage = momentum_params["leverage"]
 
@@ -246,7 +248,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         result_folder = "Backtest/Equity curve"
 
         # Define the filenamefor saving the index dataframe
-        filename = os.path.join(result_folder, f"{infix}eqcurve{factors}{sma_label}{knn_label}{cap_label}.csv")
+        filename = os.path.join(result_folder, f"{infix}eqcurve{factors}years{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.csv")
         index_df.to_csv(filename)
 
     # Return results
@@ -282,7 +284,7 @@ def partial_momentum_equity_curve(args):
     return tuple(factors), index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
 # Create a dictionary to store the returns of all factor combinations for the momentum strategy
-def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, multiprocessing=True):
+def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, speedup=True):
     """
     Inputs:
     - end_dates (list): List of end dates for backtesting.
@@ -316,7 +318,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Define the filename for saving the momentum dictionary
     filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.pkl")
 
-    if multiprocessing:
+    if speedup:
         # Prepare arguments for processing each factor combination in parallel
         args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params) for factors in factors_group]
 
@@ -1214,7 +1216,7 @@ def main():
         if recreate_stock_dict:
             create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
-    evaluate_momentum = False
+    evaluate_momentum = True
     if evaluate_momentum:
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
@@ -1222,15 +1224,14 @@ def main():
         # Save the statistics of all factor combinations of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.2, 0.15, 0.65]
-        create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_all = False
+    plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
