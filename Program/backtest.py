@@ -264,6 +264,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     else:
         print(f"Equity curve {filename} saved before.")
         index_df = pd.read_csv(filename)
+        index_df["Date"] = pd.to_datetime(index_df["Date"])
+        index_df.set_index("Date", inplace=True)
 
     # Return results, including confusion matrices if KNN parameters are provided
     if knn_params is not None:
@@ -502,15 +504,18 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Compute the average equity curve across all factor combinations
         eqcurve_mean = np.mean(cumulative_stock_returns, axis=0)
-        
+
+        # Calculate the mean CAGR
+        cagr_mean = (eqcurve_mean[-1] / eqcurve_mean[0])**(1 / (len(index_df) / 252)) - 1
+
         # Create a figure
         plt.figure(figsize=(10, 6))
 
         # Plot the cumulative index return
-        plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
+        plt.plot(index_df.index, index_df["Cumulative Return"], label=index_dict[index_name])
 
         # Plot the mean equity curve
-        plt.plot(index_df.index, eqcurve_mean, label="Mean")
+        plt.plot(index_df.index, eqcurve_mean, label=f"Mean CAGR: {cagr_mean * 100:.2f}%")
 
         # Set the labels
         plt.xlabel("Date")
@@ -1329,9 +1334,10 @@ def main():
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
+        print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
         
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
