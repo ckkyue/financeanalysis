@@ -520,7 +520,8 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
     cap_label = f"cap{cap_threshold}" if cap_threshold else ""
 
     # Load the stock dictionary if it exists
-    stock_dict_filename = os.path.join(result_folder, f"Stock dict/{infix}stock_dict{factors}{cap_label}.txt")
+    stock_dict_folder = os.path.join(result_folder, "Stock dict")
+    stock_dict_filename = os.path.join(stock_dict_folder, f"{infix}stock_dict{factors}{cap_label}.txt")
     if os.path.isfile(stock_dict_filename):
         with open(stock_dict_filename, "r") as file:
             stock_dict = ast.literal_eval(file.read())
@@ -596,12 +597,11 @@ def main():
 
     # Get the current date
     current_date = get_current_date(start, index_name)
-    current_date = "2024-12-27"
 
     # Create the end dates
-    end_dates = generate_end_dates(7, current_date, interval="1w")
-    end_dates.append(current_date)
-    # end_dates = [current_date]
+    # end_dates = generate_end_dates(7, current_date, interval="1w")
+    # end_dates.append(current_date)
+    end_dates = [current_date]
 
     # Stock selection
     select_stocks(end_dates, current_date, index_name, index_dict, 
