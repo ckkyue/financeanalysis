@@ -860,9 +860,6 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
     equity = get_equity(month_inv, years, returns_arr[0])
     final_equity = equity[-1]
 
-    # Calculate the maximum drawdown
-    max_drawdown = np.max((np.maximum.accumulate(equity) - equity) / np.maximum.accumulate(equity))
-
     # Create a figure
     plt.figure(figsize=(10, 6))
 
@@ -882,7 +879,7 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
              f"Skewness: {returns_arr[1][10]:.2f}\n"
              f"Kurtosis: {returns_arr[1][11]:.2f}\n"
              f"Final value: {int(round(final_equity, -3))}\n"
-             f"Max drawdown: {max_drawdown * 100:.2f}%", 
+             f"Max drawdown: {returns_arr[1][6] * 100:.2f}%", 
              transform=plt.gca().transAxes, fontsize=11)
         
     # Set the labels
@@ -1329,7 +1326,7 @@ def main():
         # Save the statistics of all factor combinations of the momentum strategy
         save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
@@ -1371,7 +1368,8 @@ def main():
     index_equity_curve = False
     if index_equity_curve:
         # Plot the equity curve of the index
-        years = 25
+        years = 7
+        index_df = get_df(index_name, current_date)
         returns_arr = calculate_stats(index_df, years)
         plot_index_equity_curve(index_name, index_dict, 10000, years, returns_arr)
 
