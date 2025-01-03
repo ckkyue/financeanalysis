@@ -12,11 +12,24 @@ import requests
 import time
 import yfinance as yf
 
-# Scrape the url
 def scrape(url, retry=0, max_retry=10, **kwargs):
+    """
+    Scrape the specified URL with retry logic for handling HTTP errors.
+
+    Parameters:
+    - url (str): The URL to be scraped.
+    - retry (int, optional): The current retry attempt (default is 0).
+    - max_retry (int, optional): The maximum number of retry attempts (default is 10).
+    - **kwargs: Additional arguments to pass to the requests.get() method.
+
+    Returns:
+    - response (requests.Response): The response object if the request is successful.
+    - str: An error message if the request fails after retries or due to a general error.
+    """
+
     session = requests.Session()
 
-    # Add the headers to mimic a browser
+    # Update the session headers to mimic a browser
     session.headers.update(
         {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
          "Accept-Language": "en-US,en;q=0.9",
@@ -32,8 +45,8 @@ def scrape(url, retry=0, max_retry=10, **kwargs):
         return response
 
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 429:
-            if retry < max_retry: # Maximum retry attempts set to 10
+        if e.response.status_code == 429: # Too Many Requests
+            if retry < max_retry: # Check if maximum retry attempts have been reached
                 retry_after = np.ceil(float(e.response.headers.get("Retry-After", 10))) # Default to 10 seconds if Retry-After header is missing
                 time.sleep(retry_after)
                 print(f"Retry after {retry_after} for {url}.")
@@ -46,20 +59,31 @@ def scrape(url, retry=0, max_retry=10, **kwargs):
     except Exception as e:
         return f"General error: {e}"
 
-# Create the dataframe
 def etl(response):
+    """
+    Extract, transform, and load data into a DataFrame from the HTTP response.
+
+    Parameters:
+    - response (requests.Response): The HTTP response object containing the data.
+
+    Returns:
+    - pd.DataFrame: A DataFrame containing the extracted data or an empty DataFrame in case of an error.
+    """
+
     try:
-        # Regex to find the data
+        # Use regex to find relevant data in the response text
         num = re.findall('(?<=div\>\"\,)[0-9\.\"\:\-\, ]*', response.text)
         text = re.findall('(?<=s\: \')\S+(?=\'\, freq)', response.text)
 
-        # Convert the text to a dictionary
+        # Convert the extracted text into a list of dictionaries
         dicts = [json.loads("{" + i + "}") for i in num]
 
-        # Initialize an empty dataframe to store the data
+        # Initialise an empty DataFrame to store the data
         df = pd.DataFrame()
         for index, value in enumerate(text):
             df[value] = dicts[index].values()
+        
+        # Set the DataFrame's index to the keys of the last dictionary
         df.index = dicts[index].keys()
         return df
     

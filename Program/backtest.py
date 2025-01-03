@@ -1002,7 +1002,7 @@ def calculate_stats(df, years, name=None):
     cagr = total_return ** (1 / years) - 1
 
     # Calculate the Sharpe ratio
-    risk_free_rate = 0 # Assuming a risk-free rate of 0 for simplicity
+    risk_free_rate = 0.03 # Assuming a risk-free rate of 0 for simplicity
     percent_change_label = f"{name} Percent Change" if name else "Percent Change"
     return_mean = df[percent_change_label].mean() * 252
     volatility = df[percent_change_label].std() * (252 ** 0.5)
@@ -1340,7 +1340,7 @@ def main():
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
 
-    show_momentum_stats = False
+    show_momentum_stats = True
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
