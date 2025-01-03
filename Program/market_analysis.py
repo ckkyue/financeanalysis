@@ -12,8 +12,21 @@ from technicals import *
 # pd.set_option("display.max_rows", None)
 # pd.set_option("display.max_columns", None)
 
-# Screen the stocks from Excel file
 def screen_excel(excel_filename, sector_excel_classification):
+    """
+    Screen stocks from an Excel file and apply formatting based on specified criteria.
+
+    Parameters:
+    - excel_filename (str): The path to the Excel file containing stock data.
+    - sector_excel_classification (DataFrame): A DataFrame containing sector classifications.
+
+    This function highlights cells based on the following criteria:
+    - Volatility Z-Scores: Text colour changes based on thresholds.
+    - Sector classification: Cells are highlighted based on sector performance.
+    - MVP designation: Text colour changes to green for "MVP" entries.
+    - VCP status: Cells are highlighted for entries marked as True.
+    """
+
     # Get the classified sectors
     sectors_excel_leading = sector_excel_classification["Leading"]
     sectors_excel_improving = sector_excel_classification["Improving"]
@@ -24,14 +37,14 @@ def screen_excel(excel_filename, sector_excel_classification):
     workbook = openpyxl.load_workbook(excel_filename)
     sheet = workbook.active
 
-    # Define the fill colour for highlighting
+    # Define fill colours for highlighting
     yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
     red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
     orange_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
     red_font = Font(color="FF0000")
     green_font = Font(color="008000")
 
-    # Find the index of the "Stock", "Sector", "Volatility 20 Z-Score", "Volatility 60 Z-Score", and "VCP" columns
+    # Find the index of relevant columns
     stock_col_index = None
     volatility20_col_index = None
     volatility60_col_index = None
@@ -53,7 +66,7 @@ def screen_excel(excel_filename, sector_excel_classification):
         elif cell.value == "Sector":
             sector_col_index = cell.column
 
-    # Highlight the cells of each row
+    # Highlight the cells of each row based on the criteria
     if sector_col_index is not None:
         for row in sheet.iter_rows(min_row=2): # Start from the second row
             volatility20_cell = row[volatility20_col_index - 1]
@@ -62,29 +75,29 @@ def screen_excel(excel_filename, sector_excel_classification):
             mvp_cell = row[mvp_col_index - 1]
             vcp_cell = row[vcp_col_index - 1]
             
-            # Change text colour to red if Volatility 20 Z-Score is greater than 2
+            # Change text colour to red if Volatility 20 Z-Score exceeds 2
             if volatility20_cell.value > 2:
                 volatility20_cell.font = red_font
             elif volatility20_cell.value < - 1:
                 volatility20_cell.font = green_font
 
-            # Change text colour to red if Volatility 60 Z-Score is greater than 2
+            # Change text colour to red if Volatility 60 Z-Score exceeds 2
             if volatility60_cell.value > 2:
                 volatility60_cell.font = red_font
             elif volatility60_cell.value < - 1:
                 volatility60_cell.font = green_font
 
-            # Highlight the stock if its sector matches
+            # Highlight the sector cell based on performance classification
             if sector_cell.value in sectors_excel_leading + sectors_excel_improving:
                 sector_cell.fill = yellow_fill
             elif sector_cell.value in sectors_excel_lagging + sectors_excel_weakening:
                 sector_cell.fill = red_fill
 
-            # Change text colour to green if MVP
+            # Change text colour to green if marked as MVP
             if mvp_cell.value == "MVP":
                 mvp_cell.font = green_font
 
-            # Highlight VCP
+            # Highlight the cell if VCP is True
             if vcp_cell.value == True:
                 vcp_cell.fill = orange_fill
 
@@ -92,12 +105,27 @@ def screen_excel(excel_filename, sector_excel_classification):
     workbook.save(excel_filename)
     print(f"Changes made to the Excel file {excel_filename}.")
 
-# Calculate the retracement for stocks
 def retracement_excel(excel_filename, end_date, col_min="Low", col_max="High", period=5, buffer=15):
-    # Read the screened stocks
+    """
+    Updates the Excel file with the calculated SMA 5 slopes, retracement values,
+    and their respective z-scores.
+
+    Parameters:
+    - excel_filename (str): The path to the Excel file containing stock data.
+    - end_date (str): The end date for stock data retrieval in "YYYY-MM-DD" format.
+    - col_min (str): The name of the column for minimum values. Default to "Low".
+    - col_max (str): The name of the column for maximum values. Default to "High".
+    - period (int): The period for local extrema calculations. Default to 5.
+    - buffer (int): The buffer for retracement calculations. Default to 15.
+
+    This function updates the Excel file with the calculated SMA 5 slopes, retracement values,
+    and their respective z-scores.
+    """
+
+    # Read the screened stocks from the Excel file
     df = pd.read_excel(excel_filename)
 
-    # Initialize lists to store retracement values and SMA 5 slopes
+    # Initialise lists to store retracement values and SMA 5 slopes
     retracements = []
     SMA_5_slopes = []
 
@@ -106,21 +134,26 @@ def retracement_excel(excel_filename, end_date, col_min="Low", col_max="High", p
 
     # Iterate over all stocks
     for stock in stocks:
-        data = get_df(stock, end_date)
+        data = get_df(stock, end_date) # Retrieve stock data
         data = get_local_extrema(data, col_min=col_min, col_max=col_max, period=period)
         data["Percent Change"] = data["Close"].pct_change()
-        data["Percent Change SMA 5"] = SMA(data, 5, col="Percent Change")
-        SMA_5_slope = data["Percent Change SMA 5"].iloc[-1]
+        data["Percent Change SMA 5"] = SMA(data, 5, col="Percent Change") # Calculate SMA for percent change
+        SMA_5_slope = data["Percent Change SMA 5"].iloc[-1] # Get the last SMA value
         SMA_5_slopes.append(SMA_5_slope)
+
+        # Calculate retracement values
         local_min1, local_max, retracement = calculate_retracement(data, col_min=col_min, col_max=col_max, buffer=buffer)
         retracements.append(retracement)
 
+    # Convert lists to numpy arrays
     SMA_5_slopes = np.array(SMA_5_slopes)
     SMA_5_slopes_zscore = stats.zscore(SMA_5_slopes)
+
+    # Calculate z-scores for SMA 5 slopes and retracements
     retracements = np.array(retracements)
     retracements_zscore = stats.zscore(retracements)
 
-    # Overwrite or insert the SMA 5 slopes, retracement values, and their z-scores
+    # Overwrite or insert the calculated values into the DataFrame
     if "SMA 5 Slope (%)" in df.columns:
         df["SMA 5 Slope (%)"] = np.round(SMA_5_slopes * 100, 2)
     else:

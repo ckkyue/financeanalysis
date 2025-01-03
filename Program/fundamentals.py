@@ -90,12 +90,23 @@ def etl(response):
     except Exception:
         return pd.DataFrame()
     
-# Get the csv date
 def get_csv_date(current_date, before=True):
+    """
+    Get the closest CSV date based on the current date.
+
+    Parameters:
+    - current_date (str): The current date in 'YYYY-MM-DD' format.
+    - before (bool): If True, return the latest date before or on the current date; 
+                     if False, return the earliest date after the current date.
+
+    Returns:
+    - str: The closest CSV date in 'YYYY-MM-DD' format or None if no valid date is found.
+    """
+
     # Format the current date
     current_date = dt.datetime.strptime(current_date, "%Y-%m-%d")
     
-    # Months that are multiples of 3
+    # Define months that are multiples of 3
     months = [3, 6, 9, 12]
     
     # Create a list of dates for the 1st of the month, including last December
@@ -115,31 +126,42 @@ def get_csv_date(current_date, before=True):
     else:
         return None
 
-# Get the fundamentals of a stock and save the data to a .csv file
 def fundamentals_csv(stock, end_date, backtest=False):
+    """
+    Retrieve the fundamentals of a stock and save the data to a CSV file.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+    - backtest (bool, optional): If True, limits retries. Default to False.
+
+    Returns:
+    - pd.DataFrame or None: The DataFrame containing stock fundamentals if successful, or None if an error occurs.
+    """
+    
     stock = stock.replace("-", ".")
 
-    # Get the csv date
+    # Get the latest CSV date
     csv_date = get_csv_date(end_date)
 
-    # Define the folder path
+    # Define the folder path for storing CSV files
     folder_path = "Fundamentals"
 
-    # Check if there are pre-existing data
+    # Check for existing data files
     current_files = [file for file in os.listdir(folder_path) if file.startswith(f"{stock}_fundamentals_")]
 
-    # Get the list of dates
+    # Extract dates from existing files
     dates = [file.split("_")[-1].replace(".csv", "") for file in current_files]
 
-    # Get the maximum date from the list of dates
+    # Determine the maximum date from the list of existing dates
     max_date = max(dates) if dates else "N/A"
 
-    # Remove the old files for dates prior to the maximum date
+    # Remove old files for dates prior to the maximum date
     if max_date != "N/A":
         for date in dates:
             if date < max_date:
                 os.remove(os.path.join(folder_path, f"{stock}_fundamentals_{date}.csv"))
-        # Define the filename
+        # Define the filename based on the comparison of csv_date and max_date
         if csv_date > max_date:
             filename = os.path.join(folder_path, f"{stock}_fundamentals_{csv_date}.csv")
         else:
@@ -147,7 +169,7 @@ def fundamentals_csv(stock, end_date, backtest=False):
     else:
         filename = os.path.join(folder_path, f"{stock}_fundamentals_{csv_date}.csv")
     
-    # Save the data to a .csv file if the most updated data do not exist
+    # Save the data to a CSV file if the most updated data does not exist
     if not os.path.isfile(filename):
         try:
             stock_upper = stock.upper()
@@ -163,34 +185,36 @@ def fundamentals_csv(stock, end_date, backtest=False):
                 print(f"AttributeError: response_revenue = {response_revenue}")
                 return None
 
-            # Get the infix
+            # Extract the infix from the base URL
             infix = base_url.split("/")[-2]
 
-            # Set the urls for scraping
+            # Set the URLs for scraping income statement and financial ratios
             url1 = f"https://www.macrotrends.net/stocks/charts/{stock_upper}/{infix}/income-statement?freq=Q"
             url2 = f"https://www.macrotrends.net/stocks/charts/{stock_upper}/{infix}/financial-ratios?freq=Q"
 
-            # Scrape the urls and create dataframes
+            # Scrape the URLs and create DataFrames
             response1 = scrape(url1, max_retry=max_retry)
             df1 = etl(response1)
             response2 = scrape(url2, max_retry=max_retry)
             df2 = etl(response2)
 
-            # Check if df1 or df2 is empty
+            # Check if either DataFrame is empty
             if df1.empty or df2.empty:
                 print(f"Empty dataframe for {stock}.")
 
-                # Retrieve existing data
+                # Attempt to retrieve existing data
                 if max_date != "N/A":
                     print(f"Try to retrieve existing data at {max_date}.")
                     filename = os.path.join(folder_path, f"{stock}_fundamentals_{max_date}.csv")
             
             else:
-                df = pd.concat([df1, df2], axis=1) # Concatenate based on index
+                # Concatenate DataFrames and save to CSV
+                df = pd.concat([df1, df2], axis=1)
                 df.index.name = "Date"
                 df.to_csv(filename)
                 print(f"Fundamentals data download completed for {stock}.")
             
+                # Remove the old file for the maximum date
                 if max_date != "N/A":
                     os.remove(os.path.join(folder_path, f"{stock}_fundamentals_{max_date}.csv"))
         
@@ -200,7 +224,7 @@ def fundamentals_csv(stock, end_date, backtest=False):
     else:
         print(f"Fundamentals data download completed for {stock} before.\n")
 
-    # Read the fundamentals data of the stock if the file exists
+    # Read the fundamentals data from the CSV file if it exists
     if os.path.isfile(filename):
         df = pd.read_csv(filename)
         df["Date"] = pd.to_datetime(df["Date"])
@@ -210,39 +234,58 @@ def fundamentals_csv(stock, end_date, backtest=False):
         print(f"File not found: {filename}.")
         return None
 
-# Define the fundamentals map
 def fundamentals_map(x):
+    """
+    Convert a percentage string to a float.
+
+    Parameters:
+    - x (str): The percentage string.
+
+    Returns:
+    - float: The numeric value of the percentage or "N/A" if conversion fails.
+    """
+
     try:
         return float(x.replace("%", ""))
     
     except ValueError:
         return "N/A"
     
-# Get the earning dates of a stock and save the data to a .csv file
 def earning_dates_csv(stock, end_date):
+    """
+    Retrieve the earning dates of a stock and save the data to a CSV file.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+
+    Returns:
+    - pd.DataFrame or None: The DataFrame containing earning dates if successful, or None if an error occurs.
+    """
+
     stock = stock.replace("-", ".")
 
-    # Get the csv date
+    # Get the latest CSV date
     csv_date = get_csv_date(end_date)
 
-    # Define the folder path
+    # Define the folder path for storing CSV files
     folder_path = "Fundamentals"
 
-    # Check if there are pre-existing data
+    # Check for existing data files
     current_files = [file for file in os.listdir(folder_path) if file.startswith(f"{stock}_earningdates_")]
 
-    # Get the list of dates
+    # Extract dates from existing files
     dates = [file.split("_")[-1].replace(".csv", "") for file in current_files]
 
-    # Get the maximum date from the list of dates
+    # Determine the maximum date from the list of existing dates
     max_date = max(dates) if dates else "N/A"
 
-    # Remove the old files for dates prior to the maximum date
+    # Remove old files for dates prior to the maximum date
     if max_date != "N/A":
         for date in dates:
             if date < max_date:
                 os.remove(os.path.join(folder_path, f"{stock}_earningdates_{date}.csv"))
-        # Define the filename
+        # Define the filename based on the comparison of csv_date and max_date
         if csv_date > max_date:
             filename = os.path.join(folder_path, f"{stock}_earningdates_{csv_date}.csv")
         else:
@@ -250,20 +293,20 @@ def earning_dates_csv(stock, end_date):
     else:
         filename = os.path.join(folder_path, f"{stock}_earningdates_{csv_date}.csv")
 
-    # Save the data to a .csv file if the most updated data do not exist
+    # Save the data to a CSV file if the most updated data does not exist
     if not os.path.isfile(filename):
         try:
-            # Set the url for scraping
+            # Set the URL for scraping earning dates
             url = f"https://www.alphaquery.com/stock/{stock}/earnings-history"
 
-            # Create dataframe
+            # Create DataFrame by scraping the table from the URL
             df = pd.read_html(url)[0]
 
-            # Check if df is empty
+            # Check if the DataFrame is empty
             if df.empty:
                 print(f"Empty dataframe for {stock}.")
 
-                # Retrieve existing data
+                # Attempt to retrieve existing data
                 if max_date != "N/A":
                     print(f"Try to retrieve existing data at {max_date}.")
                     filename = os.path.join(folder_path, f"{stock}_earningdates_{max_date}.csv")
@@ -272,6 +315,7 @@ def earning_dates_csv(stock, end_date):
                 df.to_csv(filename)
                 print(f"Earning dates data download completed for {stock}.")
 
+                # Remove the old file for the maximum date
                 if max_date != "N/A":
                     os.remove(os.path.join(folder_path, f"{stock}_earningdates_{max_date}.csv"))
 
@@ -281,7 +325,7 @@ def earning_dates_csv(stock, end_date):
     else:
         print(f"Earning dates data download completed for {stock} before.\n")
 
-    # Read the earning dates data of the stock if the file exists
+    # Read the earning dates data from the CSV file if it exists
     if os.path.isfile(filename):
         df = pd.read_csv(filename)
         return df
@@ -289,13 +333,23 @@ def earning_dates_csv(stock, end_date):
         print(f"File not found: {filename}.")
         return None
 
-# Get the earning dates of a stock
-def get_earning_dates(stock, current_date):   
+def get_earning_dates(stock, current_date):
+    """
+    Retrieve the earning announcement dates for a given stock.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - current_date (str): The current date in 'YYYY-MM-DD' format.
+
+    Returns:
+    - list: A list of earning announcement dates.
+    """
+
     try: 
-        # Get the csv date
+        # Get the latest CSV date
         csv_date = get_csv_date(current_date)
 
-        # Get the dataframe
+        # Retrieve the DataFrame containing earning dates
         df = earning_dates_csv(stock, csv_date)
 
         # Get the list of announcement dates and reverse the order
@@ -306,13 +360,13 @@ def get_earning_dates(stock, current_date):
         earning_dates = []
 
     try:
-        # Get the future earning dates
+        # Get future earning dates from yfinance
         calendar = yf.Ticker(stock).calendar
 
         # Check if "Earnings Date" is available in the calendar data
         if "Earnings Date" in calendar:
             future_earning_dates = [date.strftime("%Y-%m-%d") for date in calendar["Earnings Date"]]
-            # Append future earning dates
+            # Append future earning dates to the list
             earning_dates.extend(future_earning_dates)
         else:
             print("Next earnings date not available in the calendar data.")
@@ -322,11 +376,26 @@ def get_earning_dates(stock, current_date):
 
     return earning_dates
 
-# Get the market cap of a stock
 def get_market_cap(stock, stock_info, end_date, current_date, backtest=False):
+    """
+    Retrieve the market capitalisation of a given stock.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - stock_info (dict): A dictionary containing stock information.
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+    - current_date (str): The current date in 'YYYY-MM-DD' format.
+    - backtest (bool, optional): If True, limits retries. Default to False.
+
+    Returns:
+    - float or str: The market capitalisation in billions or "N/A" if not available.
+    """
+
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
+
+        # Filter the earning dates
         earning_dates = [earning_date for earning_date in earning_dates if earning_date < current_date]
 
     except Exception as e:
@@ -339,34 +408,34 @@ def get_market_cap(stock, stock_info, end_date, current_date, backtest=False):
     else:
         recent_earning_date = current_date
 
-    # Read the fundamentals data from .csv file if end date is earlier than recent earning date
+    # Read the fundamentals data from the CSV file if end date is earlier than the recent earning date
     if end_date < recent_earning_date:
         if earning_dates:
-            # Get the earning dates
+            # Filter the earning dates
             earning_dates = [earning_date for earning_date in earning_dates if earning_date < end_date]
             
             # Get the most recent report date
             recent_report_date = max(earning_dates)
 
-        # Estimate the recent report date by shifting 3 months backwards from end date
+            # Estimate the recent report date by shifting 3 months backwards from end date
         else:
             recent_report_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - relativedelta(months=3)).strftime("%Y-%m-%d")
 
-        # Get the csv date
+        # Get the latest CSV date
         csv_date = get_csv_date(current_date)
 
-        # Read the fundamentals data from .csv file
+        # Read the fundamentals data from the CSV file
         df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
-        # Check if the dataframe is None
+        # Check if the DataFrame is None
         if df is not None:
             # Filter the dates
             dates = df.index[df.index <= recent_report_date]
 
-            # Generate the dates
+            # Get the closest date
             closest_date = dates[0]
 
-            # Get the number of shares
+            # Get the number of shares outstanding
             shares = df.loc[closest_date, "shares-outstanding"] * 1e6
 
             # Get the price data of the stock
@@ -375,23 +444,39 @@ def get_market_cap(stock, stock_info, end_date, current_date, backtest=False):
             # Get the latest closing price
             closest_close = df.loc[df.index[df.index <= closest_date].max(), "Close"]
 
-            # Calculate the market capitalization (market cap)
+            # Calculate the market capitalisation
             market_cap = round(shares * closest_close / 1e9, 2)
         
         else:
             market_cap = "N/A"
         
     else:
+        # Retrieve market cap from stock_info if no recent earnings date
         market_cap = stock_info.get("marketCap", "N/A")
         market_cap = round(market_cap / 1e9, 2) if market_cap != "N/A" else "N/A"
 
     return market_cap
 
-# Get the fundamentals data of a stock
 def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS this Y", "EPS Q/Q", "ROE"], backtest=False):
+    """
+    Retrieve the fundamentals data of a stock.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+    - current_date (str): The current date in 'YYYY-MM-DD' format.
+    - columns (list, optional): List of columns to retrieve; defaults to specific EPS and ROE values.
+    - backtest (bool, optional): If True, limits retries. Default to False.
+
+    Returns:
+    - tuple: A tuple containing EPS past 5Y growth, EPS this Y growth, EPS Q/Q growth, and ROE.
+    """
+    
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
+
+        # Filter the earning dates
         earning_dates = [earning_date for earning_date in earning_dates if earning_date < current_date]
 
     except Exception as e:
@@ -404,31 +489,31 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
     else:
         recent_earning_date = current_date
 
-    # Read the fundamentals data from .csv file if end date is earlier than recent earning date
+    # Read the fundamentals data from CSV if end date is earlier than recent earning date
     if end_date < recent_earning_date:
         if earning_dates:
-            # Get the earning dates
+            # Filter the earning dates
             earning_dates = [earning_date for earning_date in earning_dates if earning_date < end_date]
             
             # Get the most recent report date
             recent_report_date = max(earning_dates)
 
-        # Estimate the recent report date by shifting 3 months backwards from end date
+            # Estimate the recent report date by shifting 3 months backwards from end date
         else:
             recent_report_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - relativedelta(months=3)).strftime("%Y-%m-%d")
 
-        # Get the csv date
+        # Get the latest CSV date
         csv_date = get_csv_date(current_date)
 
-        # Read the fundamentals data from .csv file
+        # Read the fundamentals data from the CSV file
         df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
-        # Check if the dataframe is None
+        # Check if the DataFrame is None
         if df is not None:
             # Filter the dates
             dates = df.index[df.index <= recent_report_date]
 
-            # Generate the dates
+            # Get the closest date
             closest_date = dates[0]
             past_dates_annual = {str(i): dates[i * 4 - 1] if i * 4 - 1 < len(dates) else None for i in [1, 2, 5, 6]}
             past_dates_quarter = {str(i): dates[i] if i < len(dates) else None for i in [1, 2, 3]}
@@ -470,8 +555,21 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
     
     return EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE
 
-# Get the quarterly growths of a stock
 def get_lastQ_growths(stock, index_name, end_date, current_date, backtest=False):
+    """
+    Get the quarterly growths of a stock.
+
+    Parameters:
+    - stock (str): The stock ticker symbol.
+    - index_name (str): The index name to identify stock exchange.
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+    - current_date (str): The current date in 'YYYY-MM-DD' format.
+    - backtest (bool, optional): If True, limits retries. Default to False.
+
+    Returns:
+    - tuple: A tuple containing EPS this Q growth, EPS last 1Q growth, and EPS last 2Q growth.
+    """
+
     try:
         # Get the earning dates
         earning_dates = get_earning_dates(stock, current_date)
@@ -488,7 +586,7 @@ def get_lastQ_growths(stock, index_name, end_date, current_date, backtest=False)
     # Handle non-HKEX stocks
     else:
         if earning_dates:
-            # Get the earning dates
+            # Filter the earning dates
             earning_dates = [earning_date for earning_date in earning_dates if earning_date < end_date]
             
             # Get the most recent report date
@@ -498,18 +596,18 @@ def get_lastQ_growths(stock, index_name, end_date, current_date, backtest=False)
         else:
             recent_report_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - relativedelta(months=3)).strftime("%Y-%m-%d")
 
-        # Get the csv date
+        # Get the CSV date
         csv_date = get_csv_date(current_date)
         
-         # Read the fundamentals data from .csv file       
+        # Read the fundamentals data from CSV       
         df = fundamentals_csv(stock, csv_date, backtest=backtest)
 
-        # Check if the dataframe is None
+        # Check if the DataFrame is None
         if df is not None:
             # Filter the dates
             dates = df.index[df.index <= recent_report_date]
 
-            # Generate the dates
+            # Get the closest date
             closest_date = dates[0]
             past_dates_quarter = {str(i): dates[i] if i < len(dates) else None for i in [1, 2, 3]}
             

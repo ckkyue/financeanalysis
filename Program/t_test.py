@@ -2,12 +2,30 @@
 import datetime as dt
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
 from backtest import calculate_stats, get_momentum_labels
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import t
 
-# Calculate the p-value of one-sample t-test
 def ttest_1sample(values, specified_value):
+    """
+    Calculate the t-statistic and p-value for a one-sample t-test.
+
+    Parameters:
+    - values (array-like): The sample data for which the t-test is to be performed.
+    - specified_value (float): The value to test against the sample mean.
+
+    Returns:
+    - tuple: A tuple containing:
+        - t_stat (float): The calculated t-statistic.
+        - p_value (float): The one-tailed p-value of the test.
+    
+    The function uses the formula for the t-statistic:
+    t = (mean - specified_value) / (sd / sqrt(n))
+    where:
+    - mean is the sample mean,
+    - sd is the sample standard deviation,
+    - n is the sample size.
+    """
+    
     n = len(values)
     dof = n - 1
     mean = np.mean(values)
@@ -21,17 +39,6 @@ def ttest_1sample(values, specified_value):
 def main():
     # Start of the program
     start = dt.datetime.now()
-
-    # Define the paths for the folders
-    folders = ["Backtest", "Backtest/Stock dict", "Backtest/Equity curve"]
-
-    # Variables
-    HKEX_all = True
-    NASDAQ_all = True
-    period_hk = 60 # Period for HK stocks
-    period_us = 252 # Period for US stocks
-    RS = 90
-    backtest = True
 
     # Index
     index_name = "^GSPC"

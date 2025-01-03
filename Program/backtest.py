@@ -3,7 +3,7 @@ import ast
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 from functools import partial
-from helper_functions import get_current_date, generate_end_dates, get_df, get_infix, randomize_array
+from helper_functions import get_current_date, generate_end_dates, get_df, get_infix, randomise_array
 import itertools
 import matplotlib.pyplot as plt
 import multiprocessing
@@ -868,7 +868,7 @@ def plot_index_equity_curve(index_name, index_dict, month_inv, years, returns_ar
     
     # Simulate and plot additional equity curves
     for i in range(10):
-        returns_sim = randomize_array(returns_arr[0]) # Randomize the returns
+        returns_sim = randomise_array(returns_arr[0]) # Randomize the returns
         equity_sim = get_equity(month_inv, years, returns_sim)
         plt.plot(equity_sim, linestyle="--", alpha=0.7)
     
@@ -959,7 +959,7 @@ def extract_position(s):
     return np.array(start_index), np.array(end_index)
 
 # Calculate various financial statistics for a given dataframe
-def calculate_stats(df, years, name=None):
+def calculate_stats(df, years, name=None, risk_free_rate=0.03):
     """
     Calculate various financial statistics for a given dataframe.
 
@@ -967,6 +967,7 @@ def calculate_stats(df, years, name=None):
     - df (DataFrame): DataFrame with a "Close" column.
     - years (int): Number of years for CAGR and other metrics.
     - name (str): Name of the strategy. Default is None.
+    - risk_free_rate (float): Risk-free return rate. Default to 3%.
 
     Returns:
     - tuple: (yearly returns, stats array)
@@ -1002,7 +1003,6 @@ def calculate_stats(df, years, name=None):
     cagr = total_return ** (1 / years) - 1
 
     # Calculate the Sharpe ratio
-    risk_free_rate = 0.03 # Assuming a risk-free rate of 0 for simplicity
     percent_change_label = f"{name} Percent Change" if name else "Percent Change"
     return_mean = df[percent_change_label].mean() * 252
     volatility = df[percent_change_label].std() * (252 ** 0.5)
@@ -1323,8 +1323,8 @@ def main():
         # Create a dictionary to store the returns of all factor combinations for the momentum strategy
         create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-        # Save the statistics of all factor combinations of the momentum strategy
-        save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    # Save the statistics of all factor combinations of the momentum strategy
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params, reanalyse=True)
 
     plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
