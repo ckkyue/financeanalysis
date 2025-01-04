@@ -18,8 +18,8 @@ def scrape(url, retry=0, max_retry=10, **kwargs):
 
     Parameters:
     - url (str): The URL to be scraped.
-    - retry (int, optional): The current retry attempt (default is 0).
-    - max_retry (int, optional): The maximum number of retry attempts (default is 10).
+    - retry (int, optional): The current retry attempt. Default is 0.
+    - max_retry (int, optional): The maximum number of retry attempts. Default is 10.
     - **kwargs: Additional arguments to pass to the requests.get() method.
 
     Returns:

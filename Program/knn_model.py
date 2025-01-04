@@ -2,7 +2,7 @@
 from backtest import calculate_stats, get_momentum_labels, momentum_equity_curve
 import datetime as dt
 from dateutil.relativedelta import relativedelta
-from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
+from helper_functions import get_current_date, generate_end_dates, get_infix
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,14 +10,23 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from technicals import *
-from tqdm import tqdm
 
-# Define the Lorentzian metric
 def lorentzian_metric(arr1, arr2):
-    # Compute the time difference
+    """
+    Calculate the Lorentzian distance between two points in spacetime.
+
+    Parameters:
+    - arr1 (array-like): First point in spacetime (time and spatial coordinates).
+    - arr2 (array-like): Second point in spacetime (time and spatial coordinates).
+
+    Returns:
+    - float: The computed Lorentzian distance between the two points.
+    """
+
+    # Compute the time difference (dx0)
     dx0 = arr1[0] - arr2[0]
 
-    # Compute the spatial difference vector
+    # Compute the spatial difference vector (dxi)
     dxi = arr1[1:] - arr2[1:]
 
     # Compute the Lorentzian distance
@@ -25,8 +34,26 @@ def lorentzian_metric(arr1, arr2):
 
     return distance
 
-# Create the train and test data
 def preprocess_knn(df, start_date, end_date, lookback, features, scaler=StandardScaler()):
+    """
+    Preprocess data for KNN model training and testing.
+
+    Parameters:
+    - df (DataFrame): The input DataFrame containing stock data.
+    - start_date (str): The start date for the training period in 'YYYY-MM-DD' format.
+    - end_date (str): The end date for the testing period in 'YYYY-MM-DD' format.
+    - lookback (int): The number of years to look back for training data.
+    - features (list): List of feature columns to use for training.
+    - scaler (object): Scaler object for feature scaling. Default is StandardScaler.
+
+    Returns:
+    - X_train (array): Scaled training features.
+    - Y_train (Series): Training target variable.
+    - X_test (array): Scaled testing features.
+    - Y_test (Series): Testing target variable.
+    - df_test (DataFrame): DataFrame containing test data.
+    """
+
     # Add technical indicators to the data
     add_indicator(df)
 
@@ -34,10 +61,10 @@ def preprocess_knn(df, start_date, end_date, lookback, features, scaler=Standard
     for i in [20, 50]:
         df[f"SMA {str(i)} Ratio"] = df["Close"] / df[f"SMA {str(i)}"]
     
-    # Create a new column "Change" indicating if the closing price increases or decreases the next day
+    # Create a new column "Change" indicating if the closing price increases the next day
     df["Change"] = (df["Close"].shift(-1) > df["Close"]).astype(int)
 
-    # Select the features
+    # Select the features for training
     X = df[features]
     X.head()
 
@@ -47,71 +74,94 @@ def preprocess_knn(df, start_date, end_date, lookback, features, scaler=Standard
     # Define the start date for training, considering the lookback period
     train_start_date = (dt.datetime.strptime(start_date, "%Y-%m-%d") - relativedelta(years=lookback)).strftime("%Y-%m-%d")
 
-    # Modify the training start date
+    # Modify the training start date to the nearest available date in the DataFrame
     train_start_date = df.index[df.index >= train_start_date].min()
 
     # Define the end date for training
     train_end_date = start_date
 
-    # Get the indices of dates
+    # Get the indices of dates for slicing the data
     train_start_index = len(df[ : train_start_date])
     train_end_index = len(df[ : train_end_date])
     end_index = len(df[ : end_date])
 
-    # Train data
+    # Prepare training data
     X_train = X[train_start_index : train_end_index]
 
-    # Scale the train data
+    # Scale the training data
     X_train = scaler.fit_transform(X_train)
     Y_train = Y[train_start_index : train_end_index]
     
-    # Test data
+    # Prepare testing data
     X_test = X[train_end_index : end_index + 1]
 
-    # Scale the test data using the same scaler
+    # Scale the testing data using the same scaler
     X_test = scaler.transform(X_test)
     Y_test = Y[train_end_index : end_index + 1]
 
-    # Create a dataframe for testing
+    # Create a DataFrame for the testing period
     df_test = df[train_end_date : end_date]
 
     return X_train, Y_train, X_test, Y_test, df_test
 
-# Calculate the test accuracy of the KNN model
 def knn_accuracy(X_train, Y_train, X_test, Y_test, k, lorentzian=False):
+    """
+    Calculate the accuracy of the KNN model.
+
+    Parameters:
+    - X_train (array): Training feature data.
+    - Y_train (array): Training target data.
+    - X_test (array): Testing feature data.
+    - Y_test (array): Testing target data.
+    - k (int): Number of neighbors to use for the KNN algorithm.
+    - lorentzian (bool): If True, uses the Lorentzian metric; otherwise, uses the default metric.
+
+    Returns:
+    - accuracy_train (float): Training accuracy score.
+    - accuracy_test (float): Testing accuracy score.
+    - cm_train (array): Confusion matrix for training data.
+    - cm_test (array): Confusion matrix for testing data.
+    - predictions_train (array): Predicted values for training data.
+    - predictions_test (array): Predicted values for testing data.
+    """
+
     if lorentzian:
         # Initiate the Lorentzian KNN model
         lknn = KNeighborsClassifier(n_neighbors=k, metric=lorentzian_metric)
 
-        # Fit the model
+        # Fit the model on training data
         lknn.fit(X_train, Y_train)
 
-        # Accuracy score
+        # Make predictions on training and testing data
         X_train_lknn = lknn.predict(X_train)
         X_test_lknn = lknn.predict(X_test)
+
+        # Calculate accuracy scores
         accuracy_train_lknn = accuracy_score(Y_train, X_train_lknn)
         accuracy_test_lknn = accuracy_score(Y_test, X_test_lknn)
 
-        # Confusion matrix
+        # Compute confusion matrices
         cm_train_lknn = confusion_matrix(Y_train, X_train_lknn)
         cm_test_lknn = confusion_matrix(Y_test, X_test_lknn)
         
         return accuracy_train_lknn, accuracy_test_lknn, cm_train_lknn, cm_test_lknn, X_train_lknn, X_test_lknn
     
     else:
-        # Initiate the KNN model
+        # Initiate the standard KNN model
         knn = KNeighborsClassifier(n_neighbors=k)
 
-        # Fit the model
+        # Fit the model on training data
         knn.fit(X_train, Y_train)
 
-        # Accuracy score
+        # Make predictions on training and testing data
         X_train_knn = knn.predict(X_train)
         X_test_knn = knn.predict(X_test)
+
+        # Calculate accuracy scores
         accuracy_train_knn = accuracy_score(Y_train, X_train_knn)
         accuracy_test_knn = accuracy_score(Y_test, X_test_knn)
 
-        # Confusion matrix
+        # Compute confusion matrices
         cm_train_knn = confusion_matrix(Y_train, X_train_knn)
         cm_test_knn = confusion_matrix(Y_test, X_test_knn)
         
@@ -152,9 +202,9 @@ def main():
     
     # Parameters for backtesting the momentum strategy
     years = 7
-    interval = "1w"
+    interval = "2w"
     top = 5
-    cap_threshold = 1
+    cap_threshold = 10
     momentum_params = {"years": years, 
                        "interval": interval, 
                        "top": top, 
