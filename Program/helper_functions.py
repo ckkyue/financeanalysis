@@ -200,7 +200,7 @@ def get_df(stock, end_date, interval="1d", redownload=False, save=True):
     
     # Download price data if it does not exist or if redownload is requested
     if not os.path.isfile(filename) or redownload:
-        df = yf.download(stock, start=csv_date, end=end_date, interval=interval, session=LimiterSession(per_second=5))
+        df = yf.download(stock, start=csv_date, end=end_date, interval=interval, session=LimiterSession(per_second=3))
         if not df.empty:
             # Adjust DataFrame for daily data
             df.columns = df.columns.droplevel(1)
@@ -262,7 +262,7 @@ def get_stock_info(stock):
 
     try:
         # time.sleep(0.5)
-        return yf.Ticker(stock, session=LimiterSession(per_second=5)).info
+        return yf.Ticker(stock, session=LimiterSession(per_second=3)).info
     
     except Exception as e:
         print((f"Error for get_stock_info {stock}: {e}\n"))

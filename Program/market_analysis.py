@@ -220,7 +220,7 @@ def main():
     # Get the price data of the index
     index_df = get_df(index_name, current_date)
 
-    plot_all = False
+    plot_all = True
     if plot_all:
         # Iterate over all indices and sectors
         for ticker in index_names + sectors:
@@ -277,7 +277,7 @@ def main():
         # Plot the relative rotation graph
         plot_rrg(sectors, sector_dict, index_df, "sector", save=True)
 
-    plot_all_jdk = False
+    plot_all_jdk = True
     if plot_all_jdk:
         # Iterate over all sectors
         for sector in sectors:
@@ -296,7 +296,7 @@ def main():
 
         retracement_excel(excel_filename, current_date)
 
-    screen_us = False
+    screen_us = True
     if screen_us:
         # Get the Excel filename
         excel_filename = get_excel_filename(current_date, "^GSPC", index_dict, period_hk, period_us, RS, NASDAQ_all, result_folder)

@@ -9,9 +9,29 @@ pd.options.mode.chained_assignment = None
 from scipy.stats import linregress
 from tqdm import tqdm
 
-# Create dataframes to store RS ratings and volume ranks
 def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_shortName, result_folder, infix, backtest, print_multiple=True):
-    # Convert inputs to lists
+    """
+    Create dataframes to store relative strength (RS) ratings and volume ranks for stocks.
+
+    Parameters:
+    - stocks (list): List of stock identifiers to process.
+    - dfs (dict): Dictionary mapping stock identifiers to their respective DataFrames.
+    - end_dates (list): List of end dates for the analysis.
+    - periods (list): List of periods for cumulative return calculations.
+    - index_returns (list): List of index returns corresponding to each period.
+    - index_shortName (str): Short name of the index for display purposes.
+    - result_folder (str): Directory to save the results.
+    - infix (str): Infix to include in filenames.
+    - backtest (bool): If True, skip saving results to files.
+    - print_multiple (bool): If True, print return multiples for stocks.
+
+    Returns:
+    - rs_dfs (DataFrame or list of DataFrames): DataFrame(s) containing RS ratings.
+    - volume_dfs (DataFrame or list of DataFrames): DataFrame(s) containing volume ranks.
+    - rs_volume_dfs (DataFrame or list of DataFrames): DataFrame(s) containing merged RS and volume data.
+    """
+
+    # Convert inputs to lists if they are not already
     if not isinstance(end_dates, list):
         end_dates = [end_dates]
     if not isinstance(periods, list):
@@ -19,30 +39,30 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
     if not isinstance(index_returns, list):
         index_returns = [index_returns]
 
-    # Initialize three empty lists to store rs_df, volume_df, and rs_volume_df
+    # Initialise lists to store results
     rs_dfs = []
     volume_dfs = []
     rs_volume_dfs = []
     
-    # Iterate over all combinations of end dates, periods, and index return
+    # Iterate over combinations of end dates, periods, and index returns
     for end_date, period, index_return in zip(end_dates, periods, index_returns):
         return_muls = {}
         volume_smas = {}
 
-        # Iterate over all stocks
+        # Iterate over each stock
         for stock in tqdm(stocks, desc=f"Processing data for {end_date}"):
             try:
                 df = dfs.get(stock)
                 if df is None:
                     continue
                 
-                # Filter the data
+                # Filter the DataFrame for dates before the end date
                 df = df[df.index < end_date]
 
-                # Calculate the percent change of the stock
+                # Calculate percent change and stock return
                 df["Percent Change"] = df["Close"].pct_change()
 
-                # Calculate the stock return
+                # Calculate return relative to the market
                 stock_return = (df["Percent Change"] + 1).tail(period).cumprod().iloc[-1]
 
                 # Calculate the stock return relative to the market
@@ -51,7 +71,7 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
                 if print_multiple:
                     print(f"Stock: {stock} ; Return multiple against {index_shortName}: {round(return_mul, 2)}\n")
                 
-                # Calculate the moving averages of volume
+                # Compute moving averages of volume
                 df["Volume SMA 5"] = SMA(df, 5, col="Volume")
                 df["Volume SMA 20"] = SMA(df, 20, col="Volume")
                 volume_smas[stock] = {"Volume SMA 5": df["Volume SMA 5"].iloc[-1], "Volume SMA 20": df["Volume SMA 20"].iloc[-1]}
@@ -59,56 +79,72 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
             except Exception as e:
                 print(f"Error processing data for {stock}: {e}\n")
                 continue
-
-            # time.sleep(0.05)
             
-        # Create a dataframe to store the RS ratings of stocks
+        # Create a DataFrame for RS ratings
         return_muls = dict(sorted(return_muls.items(), key=lambda x: x[1], reverse=True))
         rs_df = pd.DataFrame(return_muls.items(), columns=["Stock", "Value"])
         rs_df["RS"] = rs_df["Value"].rank(pct=True) * 100
         rs_df = rs_df[["Stock", "RS"]]
 
-        # Create a dataframe to store the volume ranks of stocks
+        # Create a DataFrame for volume ranks
         volume_df = pd.DataFrame.from_dict(volume_smas, orient="index", columns=["Volume SMA 5", "Volume SMA 20"])
         volume_df["Stock"] = volume_df.index
         volume_df.reset_index(drop=True, inplace=True)
         volume_df["Volume SMA 5 Rank"] = volume_df["Volume SMA 5"].rank(ascending=False)
         volume_df["Volume SMA 20 Rank"] = volume_df["Volume SMA 20"].rank(ascending=False)
 
-        # Merge the dataframes
+        # Merge RS and volume DataFrames
         rs_volume_df = pd.merge(rs_df, volume_df, on="Stock")
         rs_volume_df = rs_volume_df.sort_values(by="RS", ascending=False)
 
-        # Check if there are pre-existing data
+        # Handle existing result files
         current_files = [file for file in os.listdir(result_folder) if file.startswith(f"{infix}rsvolume_")]
 
         # Get the list of dates
         dates = [file.split("_")[-1].replace(".csv", "") for file in current_files]
 
-        # Remove the old files for dates prior to the end date
+        # Remove old files with dates prior to the current end date
         for date in dates:
             if date < end_date:
                 os.remove(os.path.join(result_folder, f"{infix}rsvolume_{date}.csv"))
                 
-        # Define the filename
+        # Define the filename for saving results
         filename = os.path.join(result_folder, f"{infix}rsvolume_{end_date}.csv")
 
-        # Save the merged dataframe to a .csv file
+        # Save the merged DataFrame to a CSV file if not in backtest mode
         if not backtest:
             rs_volume_df.to_csv(filename, index=False)
 
+        # Append DataFrames to the lists
         rs_dfs.append(rs_df)
         volume_dfs.append(volume_df)
         rs_volume_dfs.append(rs_volume_df)
 
+    # Return results based on the number of processed dates
     if len(rs_dfs) == 1:
         return rs_dfs[0], volume_dfs[0], rs_volume_dfs[0]
     else:
         return rs_dfs, volume_dfs, rs_volume_dfs
 
-# Combine the long term and short term RS dataframes
 def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix, volume_filter=None):
-    # Convert inputs to lists
+    """
+    Combine long-term and short-term relative strength (RS) dataframes for given stocks.
+
+    Parameters:
+    - stocks (list): List of stock identifiers to process.
+    - index_df (DataFrame): DataFrame containing index data.
+    - index_name (str): Name of the index being analysed.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
+    - NASDAQ_all (bool): If True, include all NASDAQ stocks.
+    - current_date (str): The current date for filtering.
+    - end_dates1 (list): List of end dates for long-term analysis.
+    - end_dates2 (list): List of end dates for short-term analysis.
+
+    Returns:
+    - merged_dfs (DataFrame or list of DataFrames): Merged DataFrame(s) containing long-term and short-term RS data.
+    """
+
+    # Convert inputs to lists if they are not already
     if not isinstance(end_dates1, list):
         end_dates1 = [end_dates1]
     if not isinstance(end_dates2, list):
@@ -118,15 +154,15 @@ def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_d
     if not isinstance(periods2, list):
         periods2 = [periods2]
         
-    # Initialize an empty list to store the merged dataframes
+    # Initialise an empty list to store the merged dataframes
     merged_dfs = []
 
-    # Initialize an empty list to store the index returns
+    # Initialise an empty list to store the index returns
     index_returns = []
 
-    # Iterate over all combinations
+    # Iterate over combinations of end dates and periods
     for end_date1, end_date2, period1, period2 in zip(end_dates1, end_dates2, periods1, periods2):
-        # Filter the data
+        # Filter the index data for the respective end dates
         index_df1 = index_df[index_df.index < end_date1]
         index_df2 = index_df[index_df.index < end_date2]
 
@@ -134,28 +170,32 @@ def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_d
         index_df1.loc[:, "Percent Change"] = index_df1["Close"].pct_change()
         index_df2.loc[:, "Percent Change"] = index_df2["Close"].pct_change()
         
-        # Calculate the total return of the index
+        # Calculate the total return of the index for the specified periods
         index_return1 = (index_df1["Percent Change"] + 1).tail(period1).cumprod().iloc[-1]
         index_return2 = (index_df2["Percent Change"] + 1).tail(period2).cumprod().iloc[-1]
         index_shortName = index_dict[f"{index_name}"]
         print(f"Return for {index_shortName} between {index_df1.index[-period1].strftime('%Y-%m-%d')} and {end_date1}: {index_return1:.2f}")
         print(f"Return for {index_shortName} between {index_df2.index[-period2].strftime('%Y-%m-%d')} and {end_date2}: {index_return2:.2f}")
 
+        # Store index returns
         index_returns.extend([index_return1, index_return2])
-        
+
+    # Create RS and volume DataFrames 
     rs_dfs, volume_dfs, _ = create_rs_volume_df(stocks, current_date, end_dates1 + end_dates2, periods1 + periods2, index_returns, index_shortName, result_folder, infix, True, print_multiple=False)
 
-    # Separate the dataframes into two halves
+    # Separate the DataFrames into two halves
     length_df = len(rs_dfs) // 2
     rs_dfs1, rs_dfs2 = rs_dfs[:length_df], rs_dfs[length_df:]
     volume_dfs1, volume_dfs2 = volume_dfs[:length_df], volume_dfs[length_df:]
 
+    # Merge the long-term and short-term RS DataFrames
     for rs_df1, rs_df2, volume_df1, volume_df2 in zip(rs_dfs1, rs_dfs2, volume_dfs1, volume_dfs2):
+        # Apply volume filter if specified
         if volume_filter is not None:
             volume_df1 = volume_df1[(volume_df1["Volume SMA 5 Rank"] <= volume_filter) | (volume_df1["Volume SMA 20 Rank"] <= volume_filter)]
             volume_df2 = volume_df2[(volume_df2["Volume SMA 5 Rank"] <= volume_filter) | (volume_df2["Volume SMA 20 Rank"] <= volume_filter)]
 
-            # Filter rs_df1 and rs_df2 based on the stocks present in volume dataframes
+            # Filter RS DataFrames based on the stocks present in volume DataFrames
             rs_df1 = rs_df1[rs_df1["Stock"].isin(set(volume_df1["Stock"]))]
             rs_df2 = rs_df2[rs_df2["Stock"].isin(set(volume_df2["Stock"]))]
 
@@ -164,30 +204,53 @@ def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_d
         merged_df = merged_df.rename(columns={"RS 1": "Long-term RS", "RS 2": "Short-term RS"}).dropna()
         merged_dfs.append(merged_df)
 
+    # Return a single DataFrame if only one is created, otherwise return a list of DataFrames
     return merged_dfs[0] if len(merged_dfs) == 1 else merged_dfs
 
-# Compare the long and short term RS
 def compare_longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates, period1, period2, result_folder, infix):
-    # Initialize two empty lists to store the RS slopes and R^2 values
+    """
+    Compare long-term and short-term relative strength (RS) for given stocks.
+
+    Parameters:
+    - stocks (list): List of stock identifiers to process.
+    - index_df (DataFrame): DataFrame containing index data.
+    - index_name (str): Name of the index being analysed.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
+    - NASDAQ_all (bool): If True, include all NASDAQ stocks.
+    - current_date (str): The current date for filtering.
+    - end_dates (list): List of end dates for analysis.
+    - period1 (int): Period for long-term return calculations.
+    - period2 (int): Period for short-term return calculations.
+    - result_folder (str): Directory to save results.
+    - infix (str): Infix to include in filenames.
+
+    Returns:
+    - rs_slopes (list): List of slopes of the regression lines for each merged DataFrame.
+    - r_squareds (list): List of R-squared values for each merged DataFrame.
+    - end_dates2 (list): List of calculated end dates for short-term analysis.
+    """
+
+    # Initialise lists to store RS slopes and R^2 values
     rs_slopes = []
     r_squareds = []
 
-    # Define the end dates and periods
+    # Define end dates for long-term and short-term analysis
     end_dates1 = []
     end_dates2 = []
     for i in range(len(end_dates) - 1):
         end_date = end_dates[i]
         end_dates1.append(end_date)
         end_dates2.append((dt.datetime.strptime(end_date, "%Y-%m-%d") + relativedelta(days=20)).strftime("%Y-%m-%d"))
+
     periods1 = [period1] * len(end_dates1)
     periods2 = [period2] * len(end_dates2)
 
-    # Get the merged dataframe
+    # Get the merged DataFrame containing long-term and short-term RS data
     merged_dfs = longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix)
     
-    # Iterate over merged dataframe
+    # Iterate over each merged DataFrame to calculate slopes and R^2 values
     for merged_df in merged_dfs:
-        # Calculate the slope and R^2
+        # Perform linear regression to find the slope and R^2
         rs_slope, _, r_value, _, _ = linregress(merged_df["Long-term RS"], merged_df["Short-term RS"])
         r_squared = r_value**2
         rs_slopes.append(rs_slope)
@@ -195,29 +258,73 @@ def compare_longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, c
         
     return rs_slopes, r_squareds, end_dates2
 
-# Calculate the simple moving average (SMA)
 def SMA(data, period, col="Close"):
+    """
+    Calculate the Simple Moving Average (SMA) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the SMA.
+    - col (str): The column name to calculate the SMA on. Default is "Close".
+
+    Returns:
+    - Series: The calculated SMA values.
+    """
+
     return data[col].rolling(window=period).mean()
 
-# Calculate the exponential moving average (EMA)
 def EMA(data, period, col="Close"):
+    """
+    Calculate the Exponential Moving Average (EMA) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the EMA.
+    - col (str): The column name to calculate the EMA on. Default is "Close".
+
+    Returns:
+    - Series: The calculated EMA values.
+    """
+
     return data[col].ewm(span=period, adjust=False).mean()
 
-# Get the volatility
 def get_volatility(data, periods=[20, 60], col="Close"):
+    """
+    Calculate the volatility of the stock returns over specified periods.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - periods (list): List of periods over which to calculate volatility. Default is [20, 60].
+    - col (str): The column name to calculate volatility on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added volatility columns.
+    """
+
     data_copy = data.copy()
 
     # Calculate the percent change of the stock
     data_copy.loc[:, "Percent Change"] = data_copy[col].pct_change()
 
-    # Calculate the volatility
+    # Calculate the volatility for each specified period
     for period in periods:
         data[f"Volatility {period}"] = data_copy["Percent Change"].rolling(window=period).std()
 
     return data
 
-# Calculate the average true range (ATR)
 def ATR(data, period=14, col="Close"):
+    """
+    Calculate the Average True Range (ATR) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the ATR. Default is 14.
+    - col (str): The column name to calculate the ATR on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added TR and ATR columns.
+    """
+    
     # Calculate the true range (TR)
     TR = pd.concat([
         abs(data["High"] - data["Low"]),
@@ -232,8 +339,21 @@ def ATR(data, period=14, col="Close"):
 
     return data
 
-# Calculate the moving average convergence/divergence (MACD)
 def MACD(data, period_long, period_short, period_signal, col="Close"):
+    """
+    Calculate the Moving Average Convergence Divergence (MACD) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period_long (int): The period for the long EMA.
+    - period_short (int): The period for the short EMA.
+    - period_signal (int): The period for the signal line.
+    - col (str): The column name to calculate the MACD on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added MACD and signal line columns.
+    """
+
     # Calculate the short EMA
     EMA_short = EMA(data, period_short, col=col)
 
@@ -251,18 +371,29 @@ def MACD(data, period_long, period_short, period_signal, col="Close"):
     
     return data
 
-# Calculate the Relative Strength Index (RSI)
 def RSI(data, period=14, col="Close"):
+    """
+    Calculate the Relative Strength Index (RSI) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the RSI. Default is 14.
+    - col (str): The column name to calculate the RSI on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added RSI column.
+    """
+
     # Calculate the change of the stock
     data["Change"] = data[col].diff()
 
-    # Calculate the gains and losses
+    # Calculate gains and losses
     gain = data["Change"].copy()
     loss = data["Change"].copy()
     gain[gain < 0] = 0
     loss[loss > 0] = 0
 
-    # Calculate the relative strength (RS)
+    # Calculate relative strength (RS)
     RS = gain.rolling(window=period).mean() / abs(loss.rolling(window=period).mean())
 
     # Calculate the RSI
@@ -271,8 +402,20 @@ def RSI(data, period=14, col="Close"):
 
     return data
 
-# Calculate the Relative Momentum Index (RMI)
 def RMI(data, period=20, momentum=3, col="Close"):
+    """
+    Calculate the Relative Momentum Index (RMI) for a given column.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the RMI. Default is 20.
+    - momentum (int): The number of periods for momentum calculation. Default is 3.
+    - col (str): The column name to calculate the RMI on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added RMI column.
+    """
+
     data_copy = data.copy()
 
     # Calculate the change of the stock
@@ -284,7 +427,7 @@ def RMI(data, period=20, momentum=3, col="Close"):
     gain[gain < 0] = 0
     loss[loss > 0] = 0
 
-    # Calculate the relative momentum (RM)
+    # Calculate relative momentum (RM)
     RM = gain.rolling(window=period).mean() / abs(loss.rolling(window=period).mean())
 
     # Calculate the RMI
@@ -293,8 +436,18 @@ def RMI(data, period=20, momentum=3, col="Close"):
 
     return data
 
-# Calculate the Money Flow Index (MFI)
 def MFI(data, period=14):
+    """
+    Calculate the Money Flow Index (MFI) for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the MFI. Default is 14.
+
+    Returns:
+    - DataFrame: The DataFrame with added MFI column.
+    """
+
     data_copy = data.copy()
 
     # Calculate HLC3, Raw MF, and the change of HLC3
@@ -302,7 +455,7 @@ def MFI(data, period=14):
     data_copy["Raw MF"] = data_copy["HLC3"] * data_copy["Volume"]
     data_copy["HLC3 Change"] = data_copy["HLC3"].diff()
 
-    # Calculate the +MF and -MF
+    # Calculate +MF and -MF
     data_copy["+MF"] = np.where(data_copy["HLC3 Change"] > 0, data_copy["Raw MF"], 0)
     data_copy["-MF"] = np.where(data_copy["HLC3 Change"] < 0, data_copy["Raw MF"], 0)
 
@@ -318,8 +471,18 @@ def MFI(data, period=14):
 
     return data
 
-# Calculate the Commodity Channel Index (CCI)
 def CCI(data, period=20):
+    """
+    Calculate the Commodity Channel Index (CCI) for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the CCI. Default is 20.
+
+    Returns:
+    - DataFrame: The DataFrame with added CCI column.
+    """
+
     data_copy = data.copy()
     
     # Calculate the average of high, low and closing prices (HLC3)
@@ -333,14 +496,24 @@ def CCI(data, period=20):
 
     return data
 
-# Calculate the Average Directional Index (ADX)
 def ADX(data, period=14):
+    """
+    Calculate the Average Directional Index (ADX) for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the ADX. Default is 14.
+
+    Returns:
+    - DataFrame: The DataFrame with added ADX column.
+    """
+
     data_copy = data.copy()
 
     # Calculate the ATR
     data_copy = ATR(data_copy, period=period)
 
-    # Calculate the +DM and -DM
+    # Calculate +DM and -DM
     data_copy["+DM"] = np.where((data_copy["High"] - data_copy["High"].shift()) > np.maximum((data_copy["Low"].shift() - data_copy["Low"]), 0), 
                                 data_copy["High"] - data_copy["High"].shift(), 0)
     
@@ -359,8 +532,19 @@ def ADX(data, period=14):
 
     return data
 
-# Calcualte the OB/OS indicator (OBOS)
 def OBOS(data, period=14, col="Close"):
+    """
+    Calculate the Overbought/Oversold (OB/OS) indicator for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods over which to calculate the OBOS. Default is 14.
+    - col (str): The column name to calculate the OBOS on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added OBOS column.
+    """
+
     data_copy = data.copy()
 
     # Calculate the highest and lowest closing price over the past period
@@ -372,8 +556,22 @@ def OBOS(data, period=14, col="Close"):
 
     return data
 
-# Calculate the MVP/VCP indicator
 def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col="Close"):
+    """
+    Calculate the MVP/VCP indicator for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period_MVP (int): The number of periods for the MVP calculation. Default is 15.
+    - period_VCP (int): The number of periods for the VCP calculation. Default is 10.
+    - contraction (float): The contraction threshold for VCP. Default is 0.05 (5%).
+    - period (int): The number of periods to look back for counting occurrences. Default is 60.
+    - col (str): The column name to calculate the MVP/VCP on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added MVP and VCP columns.
+    """
+
     data_copy = data.copy()
     
     # Check if the M, V, and P conditions are met
@@ -412,8 +610,20 @@ def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col
     
     return data
 
-# Check follow-through day (FTD) and distribution day (DD)
 def FTD_DD(data, period=50, threshold=0.015, col="Close"):
+    """
+    Check for Follow-Through Days (FTD) and Distribution Days (DD) in the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - period (int): The number of periods to calculate the rolling mean for volume. Default is 50.
+    - threshold (float): The percentage threshold for price movement. Default is 0.015 (1.5%).
+    - col (str): The column name to calculate FTD and DD on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added FTD, DD, Multiple FTDs, and Multiple DDs columns.
+    """
+
     # Check FTD
     data["FTD"] = (data[col] > (1 + threshold) * data[col].shift(1)) \
         & (data["Volume"] > data["Volume"].shift(1)) \
@@ -430,8 +640,20 @@ def FTD_DD(data, period=50, threshold=0.015, col="Close"):
 
     return data
 
-# Locate the local extrema
 def get_local_extrema(data, col_min="Low", col_max="High", period=5):
+    """
+    Locate local minima and maxima in the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - col_min (str): The column name to find local minima. Default is "Low".
+    - col_max (str): The column name to find local maxima. Default is "High".
+    - period (int): The number of periods to consider for local extrema. Default is 5.
+
+    Returns:
+    - DataFrame: The DataFrame with added Local Min and Local Max columns.
+    """
+
     # Find local minima and maxima
     local_min = data[col_min].rolling(period, center=True, min_periods=2).min() == data[col_min]
     local_max = data[col_max].rolling(period, center=True, min_periods=2).max() == data[col_max]
@@ -442,9 +664,21 @@ def get_local_extrema(data, col_min="Low", col_max="High", period=5):
 
     return data
 
-# Calculate the most recent retracement
 def calculate_retracement(data, col_min="Low", col_max="High", buffer=15):
-    # Find indices of local mins and maxes
+    """
+    Calculate the most recent retracement based on local extrema.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - col_min (str): The column name to find local minima. Default is "Low".
+    - col_max (str): The column name to find local maxima. Default is "High".
+    - buffer (int): The number of days to look back for local maxima. Default is 15.
+
+    Returns:
+    - np.array: An array containing the local minimum, local maximum, and retracement value.
+    """
+
+    # Identify the indices of local minima and maxima
     min_indices = data[data["Local Min"]].index
     max_indices = data[data["Local Max"]].index
 
@@ -452,9 +686,10 @@ def calculate_retracement(data, col_min="Low", col_max="High", buffer=15):
     if min_indices.empty or max_indices.empty:
         return None
 
+    # Get the most recent local minimum index
     min_index1 = min_indices[-1]
 
-    # Initialize an empty list to store the most recent max
+    # Initialise a list to hold the three most recent local maxima indices
     max_index_list = []
 
     # Iterate backwards to find the three most recent max
@@ -467,14 +702,15 @@ def calculate_retracement(data, col_min="Low", col_max="High", buffer=15):
     # Handle empty cases
     if len(max_index_list) < 1:
         return None
-    
+
+    # Retrieve the value of the most recent local minimum
     local_min1 = data.loc[min_index1, col_min]
     
-    # Retrieve local max values
+    # Get local maximum values corresponding to the identified indices
     local_max_values = [data.loc[index, col_max] for index in max_index_list]
     local_max = local_max_values[0]
 
-    # Check conditions for local_max2 and local_max3
+    # Check the conditions for the second and third local maxima
     for i in range(1, len(local_max_values)):
         if (max_index_list[0] - max_index_list[i]).days <= buffer:
             local_max = max(local_max, local_max_values[i])
@@ -483,26 +719,47 @@ def calculate_retracement(data, col_min="Low", col_max="High", buffer=15):
 
     return np.array([local_min1, local_max, retracement])
 
-# Calculate the z-score
 def calculate_zscore(data, indicators, zscore_period):
-    # Convert inputs to lists
+    """
+    Calculate the z-score for specified indicators in the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - indicators (str or list): The indicator(s) for which to calculate the z-score. Can be a single string or a list of strings.
+    - zscore_period (int): The number of periods over which to calculate the mean and standard deviation.
+
+    Returns:
+    - DataFrame: The DataFrame with added columns for mean, standard deviation, and z-score of the indicators.
+    """
+
+    # Loop through each specified indicator to calculate z-scores
     if not isinstance(indicators, list):
         indicators = [indicators]
 
     for indicator in indicators:
-        # Calculat the mean of indicator
+        # Calculate the rolling mean of the indicator over the specified period
         data[f"{indicator} Mean"] = data[f"{indicator}"].rolling(window=zscore_period).mean()
 
-        # Calculate the SD of indicator
+        # Calculate the rolling standard deviation of the indicator over the specified period
         data[f"{indicator} SD"] = data[f"{indicator}"].rolling(window=zscore_period).std()
 
-        # Calculate the z-score of indicator
+        # Calculate the z-score using the formula: (value - mean) / standard deviation
         data[f"{indicator} Z-Score"] = (data[f"{indicator}"] - data[f"{indicator} Mean"]) / data[f"{indicator} SD"]
 
     return data
 
-# Add technical indicators to the data
 def add_indicator(data):
+    """
+    Add various technical indicators to the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+
+    Returns:
+    - DataFrame: The DataFrame with added technical indicators.
+    """
+
+    # Calculate volatility and other indicators
     get_volatility(data)
     ATR(data)
     MACD(data, 26, 12, 9)
@@ -515,8 +772,10 @@ def add_indicator(data):
     MVP_VCP(data)
     FTD_DD(data)
 
-    # Calculate the moving averages of closing prices and volumes
+    # Define periods for calculating moving averages
     periods = [5, 10, 20, 50, 100, 200]
+
+    # Loop through each period to calculate SMA and EMA
     for i in periods:
         data[f"SMA {str(i)}"] = SMA(data, i)
         data[f"EMA {str(i)}"] = EMA(data, i)
@@ -524,53 +783,76 @@ def add_indicator(data):
 
     return data
 
-# Preprocess the data to get the market breadth and AD line
 def trend_AD(data, periods=[20, 50, 200], col="Close"):
+    """
+    Preprocess stock data to calculate market breadth indicators and the Advance-Decline (AD) line.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - periods (list): List of periods for calculating Simple Moving Averages (SMA). Default is [20, 50, 200].
+    - col (str): The column name for closing prices. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added columns for SMA, Above SMA, A (advancing), and D (declining).
+    """
+
     data_copy = data.copy()
 
-    # Calculate the SMAs
+    # Calculate the SMAs for the specified periods
     for i in periods:
         data_copy[f"SMA {str(i)}"] = SMA(data_copy, i, col=col)
 
-        # Check if the closing price is above SMAs
+        # Check if the closing price is above the calculated SMA
         data[f"Above SMA {str(i)}"] = 0
         data.loc[data_copy[col] > data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 1
         data.loc[data_copy[col] <= data_copy[f"SMA {str(i)}"], f"Above SMA {str(i)}"] = 0
 
-    # Calculate the change of the stock
+    # Calculate the daily change in stock prices
     data_copy["Change"] = data_copy[col].diff()
 
-    # Initialize the advancing (A) and declining (D) columns
+    # Initialise columns for advancing (A) and declining (D) stocks
     data["A"] = 0
     data["D"] = 0
 
-    # Check if the price advances (A) or declines (D)
+    # Mark advancing stocks (A) where the price increased, and declining stocks (D) where it did not
     data.loc[data_copy["Change"] > 0, "A"] = 1
     data.loc[data_copy["Change"] <= 0, "D"] = 1
 
     return data
 
-# Calculate the market breadth indicators
 def market_breadth(end_date, index_df, stocks, periods=[20, 50, 200]):
-    # Initialize the Above SMA columns
+    """
+    Calculate market breadth indicators for a given index based on stock performance.
+
+    Parameters:
+    - end_date (str): The end date for the stock data.
+    - index_df (DataFrame): DataFrame to store the market breadth results.
+    - stocks (list): List of stock symbols to analyse.
+    - periods (list): List of periods for calculating Simple Moving Averages (SMA). Default is [20, 50, 200].
+
+    Returns:
+    - DataFrame: The DataFrame with market breadth indicators and AD line calculations.
+    """
+
+    # Initialise the Above SMA columns in the index DataFrame
     for i in periods:
         index_df[f"Above SMA {str(i)}"] = 0
 
-    # Initialize the advancing (A) and declining (D) columns
+    # Initialise the advancing (A) and declining (D) columns in the index DataFrame
     index_df["A"] = 0
     index_df["D"] = 0
 
-    # Iterate over all stocks
+    # Iterate over all stocks to calculate their contributions to market breadth
     for stock in tqdm(stocks):
-        # Get the price data of the stock
+        # Get the price data for the stock
         df = get_df(stock, end_date)
 
-        # Check if the data exist
+        # Check if the data exists for the stock
         if df is not None:
-            # Preprocess the data to get the market breadth and AD line
+            # Preprocess the data to calculate market breadth and AD line
             df = trend_AD(df)
 
-            # Calculate the number of stocks above SMAs
+            # Calculate the number of stocks above each SMA
             for i in periods:
                 index_df.loc[:, f"Above SMA {str(i)}"] = index_df.loc[:, f"Above SMA {str(i)}"].add(df[f"Above SMA {str(i)}"], fill_value=0)
             
@@ -578,76 +860,111 @@ def market_breadth(end_date, index_df, stocks, periods=[20, 50, 200]):
             index_df.loc[:, "A"] = index_df.loc[:, "A"].add(df["A"], fill_value=0)
             index_df.loc[:, "D"] = index_df.loc[:, "D"].add(df["D"], fill_value=0)
 
-    # Calculate the AD line
+    # Calculate the Advance-Decline (AD) line
     index_df["AD Change"] = index_df["A"] - index_df["D"]
     index_df["AD"] = index_df["AD Change"].cumsum()
     
     return index_df
 
-# Calculate the JdK RS-Ratio and Momentum
 def get_JdK(sectors, index_df, end_date, period_short=12, period_long=26, period_signal=9):
-    # Iterate over all sectors
+    """
+    Calculate the JdK RS-Ratio and Momentum for specified sectors relative to a benchmark index.
+
+    Parameters:
+    - sectors (list): List of sector symbols to analyse.
+    - index_df (DataFrame): DataFrame containing benchmark index data.
+    - end_date (str): The end date for the stock data.
+    - period_short (int): Short period for the SMA calculation. Default is 12.
+    - period_long (int): Long period for the SMA calculation. Default is 26.
+    - period_signal (int): Period for the SMA of the JdK RS-Ratio. Default is 9.
+
+    Returns:
+    - DataFrame: The DataFrame updated with JdK RS-Ratio and Momentum for each sector.
+    """
+
+    # Iterate over all specified sectors
     for sector in tqdm(sectors):
         # Get the price data of the sector
         df = get_df(sector, end_date)
         df_copy = df.copy()
 
-        # Calculate the closing price relative to benchmark
+        # Calculate the relative closing price compared to the benchmark index
         df_copy["Relative Close"] = df["Close"] / index_df["Close"]
 
-        # Calculate the SMAs of relative closing price
+        # Calculate the SMAs of the relative closing price
         df_copy[f"Relative Close SMA {period_short}"] = df_copy["Relative Close"].rolling(window=period_short).mean()
         df_copy[f"Relative Close SMA {period_long}"] = df_copy["Relative Close"].rolling(window=period_long).mean()
 
         # Calculate the JdK RS-Ratio
         df_copy["JdK RS-Ratio"] = 100 * ((df_copy[f"Relative Close SMA {period_short}"] - df_copy[f"Relative Close SMA {period_long}"]) / df_copy[f"Relative Close SMA {period_long}"] + 1)
 
-        # Calculate the SMA of JdK RS-Ratio
+        # Calculate the SMA of the JdK RS-Ratio over the signal period
         df_copy[f"JdK RS-Ratio SMA {period_signal}"] = df_copy["JdK RS-Ratio"].rolling(window=period_signal).mean()
 
         # Calculate the JdK RS-Momentum
         df_copy["JdK RS-Momentum"] = 100 * ((df_copy["JdK RS-Ratio"] - df_copy[f"JdK RS-Ratio SMA {period_signal}"]) / df_copy[f"JdK RS-Ratio SMA {period_signal}"] + 1)
 
-        # Insert the results into index_df
+        # Insert the calculated JdK RS-Ratio and Momentum into the index DataFrame
         index_df[f"{sector} JdK RS-Ratio"] = df_copy["JdK RS-Ratio"]
         index_df[f"{sector} JdK RS-Momentum"] = df_copy["JdK RS-Momentum"]
 
-        # Fill NaN values with the previous value
+        # Forward fill NaN values
         index_df = index_df.ffill()
 
     return index_df
 
-# Check buyable gap up
 def check_bgu(df):
-    # Get the current closing price
+    """
+    Check for a buyable gap up condition based on closing price and ATR.
+
+    Parameters:
+    - df (DataFrame): DataFrame containing stock data.
+
+    Returns:
+    - tuple: A tuple containing the calculated gap up price and volume.
+    """
+
+    # Retrieve the current closing price
     current_close = df["Close"].iloc[-1]
     
-    # Calculate the 40 days ATR
+    # Calculate the 40-day ATR
     df = ATR(df, period=40)
     atr = df["ATR"].iloc[-1]
 
-    # Calculate the 50 days volume
+    # Calculate the 50-day SMA of volume
     df["Volume SMA 50"] = SMA(df, 50, col="Volume")
     volume_sma50 = df["Volume SMA 50"].iloc[-1]
 
-    # Calculate the gap up price
+    # Calculate the price for the gap up condition
     price_bgu = current_close + 0.75 * atr
 
-    # Calculate the gap up volume
+    # Calculate the volume for the gap up condition
     volume_bgu = 1.5 * volume_sma50
 
     return round(price_bgu, 2), round(volume_bgu, 2)
 
-# Filter out the outlier of the dataframe
 def filter_df_outlier(df, col, zscore, greater=True):
-    # Extract the column
+    """
+    Filter outliers from the DataFrame based on z-score.
+
+    Parameters:
+    - df (DataFrame): DataFrame containing stock data.
+    - col (str): The column name to evaluate for outliers.
+    - zscore (float): The z-score threshold for identifying outliers.
+    - greater (bool): If True, filter for values greater than zscore; otherwise, filter for less.
+
+    Returns:
+    - tuple: Two DataFrames, one for inliers and one for outliers.
+    """
+
+    # Extract the specified column while dropping any NaN values
     arr = df[col].dropna()
 
-    # Calculate the mean, SD
+    # Calculate the mean and standard deviation of the column
     mean = np.mean(arr)
     sd = np.std(arr)
 
-    # Filter the dataframe
+    # Filter the DataFrame based on the z-score threshold
     df[f"{col} Z-Score"] = (df[col] - mean) / sd
     if greater:
         df_inlier = df[df[f"{col} Z-Score"] < zscore]
@@ -658,13 +975,23 @@ def filter_df_outlier(df, col, zscore, greater=True):
 
     return df_inlier, df_outlier
 
-# Calculate the n days return
 def calculate_ndays_return(df, ns):
-    # Ensure ns is a list
+    """
+    Calculate the n-day returns for specified intervals.
+
+    Parameters:
+    - df (DataFrame): DataFrame containing stock data.
+    - ns (int or list): Number of days for which to calculate returns. Can be a single integer or a list of integers.
+
+    Returns:
+    - DataFrame: The DataFrame updated with n-day return columns.
+    """
+
+    # Ensure ns is a list to handle multiple intervals
     if isinstance(ns, int):
         ns = [ns]
         
-    # Iterate over all ns
+    # Iterate over each specified number of days
     for n in ns:
         df[f"Close {n} Later"] = df["Close"].shift(- n)
         df[f"{n} Days Return (%)"] = ((df[f"Close {n} Later"] / df["Close"]) - 1) * 100

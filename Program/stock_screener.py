@@ -1,10 +1,9 @@
 # Imports
 import ast
-import concurrent.futures
 import datetime as dt
 from functools import partial
 from fundamentals import *
-from helper_functions import get_current_date, generate_end_dates, get_currency, get_df, get_excel_filename, get_infix, get_rs_volume, get_stock_info, slope_reg, stock_market
+from helper_functions import get_current_date, generate_end_dates, get_currency, get_df, get_excel_filename, get_infix, get_rs_volume, get_stock_info, stock_market
 import multiprocessing
 import numpy as np
 import pandas as pd
