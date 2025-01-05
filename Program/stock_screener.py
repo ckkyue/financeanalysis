@@ -15,7 +15,6 @@ from technicals import *
 from tqdm import tqdm
 import yfinance as yf
 
-# Calculate the stop loss and target price of a stock
 def stoploss_target(stock, entry, entry_date, period=5, max_stoploss=0.08, atr_buffer=0.5, rr=2):
     """
     Calculate the stop loss and target price for a given stock based on its entry price and date.
@@ -466,7 +465,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
     Parameters:
     - end_dates (list): List of end dates for analysis.
     - current_date (str): The current date for analysis in 'YYYY-MM-DD' format.
-    - index_name (str): Name of the index being analyzed.
+    - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
     - period_hk (int): The period for HK stocks.
     - period_us (int): The period for US stocks.
