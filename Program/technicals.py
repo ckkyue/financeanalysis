@@ -126,7 +126,7 @@ def create_rs_volume_df(stocks, dfs, end_dates, periods, index_returns, index_sh
     else:
         return rs_dfs, volume_dfs, rs_volume_dfs
 
-def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix, volume_filter=None):
+def longshort_rs(stocks, index_df, index_name, index_dict, current_date, end_dates1, end_dates2, periods1, periods2, result_folder, infix, volume_filter=None):
     """
     Combine long-term and short-term relative strength (RS) dataframes for given stocks.
 
@@ -135,7 +135,6 @@ def longshort_rs(stocks, index_df, index_name, index_dict, NASDAQ_all, current_d
     - index_df (DataFrame): DataFrame containing index data.
     - index_name (str): Name of the index being analysed.
     - index_dict (dict): Dictionary mapping index symbols to their respective names.
-    - NASDAQ_all (bool): If True, include all NASDAQ stocks.
     - current_date (str): The current date for filtering.
     - end_dates1 (list): List of end dates for long-term analysis.
     - end_dates2 (list): List of end dates for short-term analysis.

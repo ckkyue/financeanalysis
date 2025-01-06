@@ -15,7 +15,7 @@ from technicals import *
 
 def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False, local_extrema_period=5, FTD_DD=False, save=False):
     """
-    Visualizes the closing price history of a stock with optional technical indicators.
+    Visualize the closing price history of a stock with optional technical indicators.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -164,7 +164,7 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
 
 def plot_MACD(stock, df, zscore_period=252, show=252, save=False):
     """
-    Plots the MACD (Moving Average Convergence Divergence) indicator along with its z-score.
+    Plot the MACD (Moving Average Convergence Divergence) indicator along with its z-score.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -253,7 +253,7 @@ def plot_MACD(stock, df, zscore_period=252, show=252, save=False):
 
 def plot_MFI_RSI(stock, df, mfi_period=14, rsi_period=14, zscore_period=252, show=252, save=False):
     """
-    Plots the Money Flow Index (MFI) and Relative Strength Index (RSI) indicators along with their z-scores.
+    Plot the Money Flow Index (MFI) and Relative Strength Index (RSI) indicators along with their z-scores.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -341,7 +341,7 @@ def plot_MFI_RSI(stock, df, mfi_period=14, rsi_period=14, zscore_period=252, sho
 
 def plot_ADX(stock, df, zscore_period=252, show=252, save=False):
     """
-    Plots the Average Directional Index (ADX) and its z-score.
+    Plot the Average Directional Index (ADX) and its z-score.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -421,7 +421,7 @@ def plot_ADX(stock, df, zscore_period=252, show=252, save=False):
 
 def plot_volatility(stock, df, zscore_period=252, show=120, save=False):
     """
-    Plots the volatility of a stock based on the TR/ATR ratio, volume SMA 50 ratio, and their combined z-scores.
+    Plot the volatility of a stock based on the TR/ATR ratio, volume SMA 50 ratio, and their combined z-scores.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -522,7 +522,7 @@ def plot_volatility(stock, df, zscore_period=252, show=120, save=False):
 
 def plot_FTD_DD(stock, df, show=252*2, save=False):
     """
-    Plots Follow-Through Days (FTDs) and Distribution Days (DDs) for a stock.
+    Plot Follow-Through Days (FTDs) and Distribution Days (DDs) for a stock.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to be visualized.
@@ -590,7 +590,7 @@ def plot_FTD_DD(stock, df, show=252*2, save=False):
 
 def plot_market_breadth(index_name, index_df, stocks, periods=[20, 50, 200], show=120, save=False):
     """
-    Plots market breadth indicators including candlestick prices, percentage of stocks above SMAs, and the Accumulation/Distribution (AD) line.
+    Plot market breadth indicators including candlestick prices, percentage of stocks above SMAs, and the Accumulation/Distribution (AD) line.
 
     Parameters:
     - index_name (str): The name of the market index being analysed.
@@ -685,7 +685,7 @@ def plot_market_breadth(index_name, index_df, stocks, periods=[20, 50, 200], sho
 
 def plot_stocks(stocks, current_date, col="Close", show=120, save=False):
     """
-    Plots the scaled closing price history of multiple stocks for comparison.
+    Plot the scaled closing price history of multiple stocks for comparison.
 
     Parameters:
     - stocks (list): A list of stock ticker symbols to be compared.
@@ -744,7 +744,7 @@ def plot_stocks(stocks, current_date, col="Close", show=120, save=False):
 
 def plot_JdK(sector, sector_dict, index_df, show=120, save=False):
     """
-    Plots the JdK RS-Ratio and Momentum for a specified sector.
+    Plot the JdK RS-Ratio and Momentum for a specified sector.
 
     Parameters:
     - sector (str): The sector for which the JdK RS-Ratio and Momentum are plotted.
@@ -816,7 +816,7 @@ def plot_JdK(sector, sector_dict, index_df, show=120, save=False):
 
 def plot_rrg(sectors, sector_dict, index_df, type, points=8, interval=5, save=False):
     """
-    Plots the Relative Rotation Graph (RRG) for specified sectors or indices.
+    Plot the Relative Rotation Graph (RRG) for specified sectors or indices.
 
     Parameters:
     - sectors (list): A list of sector or index symbols to be analyzed.
@@ -927,7 +927,7 @@ def plot_rrg(sectors, sector_dict, index_df, type, points=8, interval=5, save=Fa
 
 def plot_sector_selected(end_date, index_name, index_dict, period=252, RS=90, NASDAQ_all=True, save=False):
     """
-    Plots the sector distribution of selected stocks in a pie chart.
+    Plot the sector distribution of selected stocks in a pie chart.
 
     Parameters:
     - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
@@ -992,7 +992,7 @@ def plot_sector_selected(end_date, index_name, index_dict, period=252, RS=90, NA
 
 def plot_corr_ta(stock, df, cols=["Open", "High", "Low", "Close", "Volume", "MACD", "RSI", "RMI", "CCI", "ADX", "MFI", "OBOS"], save=False):
     """
-    Plots the correlation matrix of specified technical indicators for a given stock.
+    Plot the correlation matrix of specified technical indicators for a given stock.
 
     Parameters:
     - stock (str): The name of the stock being analyzed.
@@ -1035,7 +1035,7 @@ def plot_corr_ta(stock, df, cols=["Open", "High", "Low", "Close", "Volume", "MAC
 
 def plot_corr_stocks(stocks, end_date, years, save=False):
     """
-    Plots the correlation matrix of closing prices for a list of stocks over a specified period.
+    Plot the correlation matrix of closing prices for a list of stocks over a specified period.
 
     Parameters:
     - stocks (list): A list of stock ticker symbols to analyse.
@@ -1089,7 +1089,7 @@ def plot_corr_stocks(stocks, end_date, years, save=False):
 
 def plot_autocorr(stock, end_date, years, save=False):
     """
-    Plots the autocorrelation function for a specified stock over a given period.
+    Plot the autocorrelation function for a specified stock over a given period.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to analyse.
@@ -1165,7 +1165,7 @@ def plot_autocorr(stock, end_date, years, save=False):
 
 def plot_longshort_rs(merged_df, end_date1, end_date2, stock_star=None):
     """
-    Plots a scatter plot comparing short-term and long-term relative strength (RS).
+    Plot a scatter plot comparing short-term and long-term relative strength (RS).
 
     Parameters:
     - merged_df (DataFrame): DataFrame containing long-term and short-term RS values.
@@ -1216,7 +1216,7 @@ def plot_longshort_rs(merged_df, end_date1, end_date2, stock_star=None):
 
 def plot_compare_longshort_rs(index_df, index_name, rs_slopes, r_squareds, end_dates, end_dates2, save=False):
     """
-    Plots the comparison of closing prices, RS slopes, R² values, and combined Z-scores.
+    Plot the comparison of closing prices, RS slopes, R-squared values, and combined Z-scores.
 
     Parameters:
     - index_df (DataFrame): DataFrame containing index data.
@@ -1316,7 +1316,7 @@ def plot_compare_longshort_rs(index_df, index_name, rs_slopes, r_squareds, end_d
 
 def plot_volume5m(stock, volume5m_data, date, sma_period=50, save=False):
     """
-    Plots the 5-minute intraday volume of a specified stock on a given date.
+    Plot the 5-minute intraday volume of a specified stock on a given date.
 
     Parameters:
     - stock (str): The ticker symbol of the stock to analyze.
@@ -1408,7 +1408,7 @@ def plot_volume5m(stock, volume5m_data, date, sma_period=50, save=False):
 
 def plot_ndays_dist(df, col, title, xlabel, filename=None, save=False):
     """
-    Plots the distribution of a specified column from a DataFrame using a histogram and overlays a Gaussian curve.
+    Plot the distribution of a specified column from a DataFrame using a histogram and overlays a Gaussian curve.
 
     Parameters:
     - df (DataFrame): The DataFrame containing the data to plot.

@@ -11,7 +11,7 @@ import yfinance as yf
 
 def check_DST(start):
     """
-    Determines if a given time is within the Daylight Saving Time (DST) period in the USA.
+    Determine if a given time is within the Daylight Saving Time (DST) period in the USA.
 
     Parameters:
     - start (datetime): The datetime object to check.
