@@ -1018,8 +1018,8 @@ def calculate_stats(df, years, name=None, risk_free_rate=0.03):
     calmar_ratio = (cagr / abs(max_drawdown)) if max_drawdown != 0 else np.nan
 
     # Calculate annual returns
-    dates = [df.index[df.index.searchsorted(date, side="right") - 1] for date in 
-            [df.index[-1] - relativedelta(years=i) for i in range(0, round(years))]][::-1]
+    indices = [- 1 - (i * 252) for i in range(round(years))]
+    dates = [df.index[index] for index in indices if index >= -len(df)][::-1]
     closes = df.loc[dates, f"Cumulative {name} Return" if name else "Cumulative Return"].values
     returns = np.diff(closes) / closes[:-1]
 
@@ -1326,11 +1326,12 @@ def main():
     # Save the statistics of all factor combinations of the momentum strategy
     save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params, reanalyse=True)
 
-    plot_momentum_equity_curve_single = False
+    plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
+        print(calculate_stats(index_df, len(index_df) / 252, "stock")[0])
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
         
@@ -1352,6 +1353,8 @@ def main():
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
         # Compare the statistics between the index and stocks selected by the momentum strategy
+        print(calculate_stats(index_df, len(index_df) / 252)[0])
+        print(calculate_stats(index_df, len(index_df) / 252)[1])
         compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, knn_params=knn_params, save=True)
     
     index_corr_ta = False
