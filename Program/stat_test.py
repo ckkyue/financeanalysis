@@ -2,8 +2,11 @@
 import datetime as dt
 from helper_functions import get_current_date, generate_end_dates, get_df, get_infix
 from backtest import calculate_stats, get_momentum_labels
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import t
+import seaborn as sns
 
 def ttest_1sample(values, specified_value):
     """
@@ -52,7 +55,7 @@ def main():
     current_date = "2024-12-27"
 
     # Parameters for backtesting the momentum strategy
-    years = 7
+    years = 5
     interval = "2w"
     top = 5
     cap_threshold = 10
@@ -71,8 +74,8 @@ def main():
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
     end_dates.append(current_date)
-    if years == 5:
-        end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
+    if years < 7:
+        end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(years, current_date, interval=interval)[0]]
 
     # Parameters of the KNN model
     knn_params = None

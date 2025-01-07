@@ -531,6 +531,29 @@ def ADX(data, period=14):
 
     return data
 
+def signal_bar(data):
+    """
+    Calculates the signal bar indicator for the given data.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+
+    Returns:
+    - DataFrame: The DataFrame with added signal bar columns.
+    """
+
+    data_copy = data.copy()
+
+    # Calculate the positive signal bar
+    data["+ Bar"] = np.where((data_copy["High"] > data_copy["High"].shift(1)) & 
+                              (data_copy["Close"] > data_copy["Open"]), - 1, 0)
+
+    # Calculate the negative signal bar
+    data["- Bar"] = np.where((data_copy["Low"] < data_copy["Low"].shift(1)) & 
+                             (data_copy["Close"] < data_copy["Open"]), 1, 0)
+
+    return data
+
 def OBOS(data, period=14, col="Close"):
     """
     Calculate the Overbought/Oversold (OB/OS) indicator for the given data.

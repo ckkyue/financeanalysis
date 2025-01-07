@@ -131,7 +131,7 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
     if "Volume" in df.columns and stock != "^VIX":
         # Plot the volume on the bottom subplot
         ax2.bar(up_df.index, up_df["Volume"], label="Volume (+)", color=colour_up)
-        ax2.bar(down_df.index, down_df["Volume"], label="Volume (-)", color=colour_down)
+        ax2.bar(down_df.index, down_df["Volume"], label="Volume (\N{MINUS SIGN})", color=colour_down)
 
         # Plot the 50-day SMA of volume
         ax2.plot(df["Volume SMA 50"], label="Volume SMA 50", color="purple")
@@ -414,6 +414,109 @@ def plot_ADX(stock, df, zscore_period=252, show=252, save=False):
     # Save the plot
     if save:
         filename = os.path.join(figure_folder, f"ADX{stock}.png")
+        plt.savefig(filename, dpi=300)
+
+    # Show the plot
+    plt.show()
+
+def plot_signal_bar(stock, df, show=252, save=False):
+    """
+    Plot the signal bar indicator.
+
+    Parameters:
+    - stock (str): The ticker symbol of the stock to be visualized.
+    - df (DataFrame): A pandas DataFrame containing stock price data.
+    - show (int, optional): The number of most recent data points to display. Default is 120.
+    - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
+
+    Returns:
+    - None: This function generates a plot and displays it or saves it to a file.
+    """
+
+    # Define the result folder
+    result_folder = "Result"
+
+    # Define the folder for saving figures
+    figure_folder = os.path.join(result_folder, "Figure")
+
+    # Check for candlestick columns
+    cols_cs = ["High", "Low", "Open"]
+    cond_cs = all(col in df.columns for col in cols_cs)
+    
+    # Add signal bar indicator to the data
+    if cond_cs:
+        df = signal_bar(df)
+    else:
+        print(f"Missing columns: {', '.join([col for col in cols_cs if col not in df.columns])}. Signal bar indicator cannot be plotted.")
+        return None
+
+    # Filter the DataFrame to show the most recent data points
+    df = df[- show:]
+    
+    # Define widths for candlestick representation
+    width_candle = 1
+    width_stick = 0.2
+
+    # Separate the DataFrame into upward and downward candlesticks
+    up_df = df[df["Close"] >= df["Open"]]
+    down_df = df[df["Close"] <= df["Open"]]
+    colour_up = "green"
+    colour_down = "red"
+
+    # Create a figure with three subplots: one for closing prices, one for volume, and one for the signal bar indicator
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [3, 1, 1]}, sharex=True)
+
+    # Plot the green candlesticks (up prices)
+    ax1.bar(up_df.index, up_df["Close"] - up_df["Open"], width_candle, bottom=up_df["Open"], color=colour_up)
+    ax1.bar(up_df.index, up_df["High"] - up_df["Close"], width_stick, bottom=up_df["Close"], color=colour_up)
+    ax1.bar(up_df.index, up_df["Low"] - up_df["Open"], width_stick, bottom=up_df["Open"], color=colour_up)
+
+    # Plot the red candlesticks (down prices)
+    ax1.bar(down_df.index, down_df["Close"] - down_df["Open"], width_candle, bottom=down_df["Open"], color=colour_down)
+    ax1.bar(down_df.index, down_df["High"] - down_df["Open"], width_stick, bottom=down_df["Open"], color=colour_down)
+    ax1.bar(down_df.index, down_df["Low"] - down_df["Close"], width_stick, bottom=down_df["Close"], color=colour_down)
+
+    # Set the y label of the first subplot
+    ax1.set_ylabel("Price")
+
+    # Set the x limit of the first subplot
+    buffer = relativedelta(days=1)
+    ax1.set_xlim(df.index[0] - buffer, df.index[-1] + buffer)
+
+    # Plot the volume on the second subplot
+    ax2.bar(up_df.index, up_df["Volume"], label="+", color=colour_up)
+    ax2.bar(down_df.index, down_df["Volume"], label="\N{MINUS SIGN}", color=colour_down)
+
+    # Set the label of the second subplot
+    ax2.set_ylabel("Volume")
+
+    # Plot the positive signal bar on the third subplot
+    ax3.plot(df["+ Bar"], color=colour_up)
+
+    # Plot the negative signal bar on the third subplot
+    ax3.plot(df["- Bar"], color=colour_down)
+
+    # Set the label of the third subplot
+    ax3.set_ylabel("Signal bar")
+
+    # Set the x label
+    plt.xlabel("Date")
+
+    # Combine legends from both subplots and place in the top subplot
+    handles, labels = ax1.get_legend_handles_labels()
+    handles += ax2.get_legend_handles_labels()[0]
+    labels += ax2.get_legend_handles_labels()[1]
+    ax1.legend(handles, labels)
+
+    # Set the title
+    plt.suptitle(f"Signal bar for {stock}")
+
+    # Adjust the spacing between subplots
+    plt.tight_layout()
+
+    # Save the plot
+    if save:
+        filename = os.path.join(figure_folder, f"signalbar{stock}.png")
         plt.savefig(filename, dpi=300)
 
     # Show the plot
