@@ -96,7 +96,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
 
     # Define the filename for saving the index DataFrame
-    filename = os.path.join(result_folder, f"Equity curve/{infix}eqcurve{factors}years{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+    filename = os.path.join(result_folder, f"Equity curve/{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
 
     # Save the index DataFrame
     if not os.path.isfile(filename) or reanalyse or knn_params:
@@ -266,6 +266,10 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         index_df = pd.read_csv(filename)
         index_df["Date"] = pd.to_datetime(index_df["Date"])
         index_df.set_index("Date", inplace=True)
+        if years < 7:
+            cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
+            end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
+            index_df = index_df[index_df.index >= end_dates[0]]
 
     # Return results, including confusion matrices if KNN parameters are provided
     if knn_params is not None:
@@ -305,7 +309,7 @@ def partial_momentum_equity_curve(args):
     # Return the factors and relevant columns from the index DataFrame
     return tuple(factors), index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
-def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, reanalyse=False, speedup=True):
+def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, recreate_dict=False, reanalyse=False, speedup=True):
     """
     Create a dictionary to store the returns of all factor combinations for the momentum strategy.
 
@@ -318,6 +322,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - knn_params (dict, optional): Parameters for the KNN model. Default to None.
+    - recreate_dict (bool): If True, recreate the dictionary even if it already exists. Default to False.
     - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
     - speedup (bool, optional): If True, use multiprocessing to speed up the process. Default to True.
 
@@ -342,35 +347,40 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     # Define the filename for saving the momentum dictionary
     filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
 
-    if speedup:
-        # Prepare arguments for processing each factor combination in parallel
-        args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params, reanalyse) for factors in factors_group]
+    # Check if the file exists and whether to recreate it
+    if not os.path.isfile(filename) or recreate_dict:
+        if speedup:
+            # Prepare arguments for processing each factor combination in parallel
+            args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params, reanalyse) for factors in factors_group]
 
-        # Create a pool of worker processes to fetch the equity curves
-        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-            results = list(tqdm(pool.imap(partial_momentum_equity_curve, args_list), total=len(args_list)))
+            # Create a pool of worker processes to fetch the equity curves
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+                results = list(tqdm(pool.imap(partial_momentum_equity_curve, args_list), total=len(args_list)))
 
-        # Create a dictionary to map each factor combination to its equity curve
-        momentum_dict = dict(results)
+            # Create a dictionary to map each factor combination to its equity curve
+            momentum_dict = dict(results)
 
+        else:
+            # Initialise an empty dictionary to store the equity curves for each combination of factors
+            momentum_dict = {}
+
+            # Iterate over all factor combinations
+            for factors in tqdm(factors_group):
+                # Get the equity curve for the current combination of factors
+                factor_index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params, reanalyse=reanalyse)
+
+                # Convert the list of factors to a tuple for the dictionary key
+                factors_tuple = tuple(factors)
+
+                # Store the equity curve in the dictionary
+                momentum_dict[factors_tuple] = factor_index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
+
+        # Save the momentum dictionary to a file
+        with open(filename, "wb") as file:
+            pickle.dump(momentum_dict, file)
+        print("Dictionary of the momentum strategy saved.")
     else:
-        # Initialise an empty dictionary to store the equity curves for each combination of factors
-        momentum_dict = {}
-
-        # Iterate over all factor combinations
-        for factors in tqdm(factors_group):
-            # Get the equity curve for the current combination of factors
-            factor_index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params, reanalyse=reanalyse)
-
-            # Convert the list of factors to a tuple for the dictionary key
-            factors_tuple = tuple(factors)
-
-            # Store the equity curve in the dictionary
-            momentum_dict[factors_tuple] = factor_index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
-
-    # Save the momentum dictionary to a file
-    with open(filename, "wb") as file:
-        pickle.dump(momentum_dict, file)
+        print("Dictionary of the momentum strategy saved before.")
 
 def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=None, plot_group=False, save=False):
     """
@@ -460,8 +470,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         # Plot the cumulative index return
         plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
 
-        # List to store cumulative returns for averaging
-        cumulative_stock_returns = []
+        # Create an empty DataFrame to store cumulative stock returns
+        cumulative_stock_returns_df = pd.DataFrame()
 
         # Iterate over all factor combinations
         for factors in tqdm(factors_group):
@@ -474,8 +484,12 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
             # Plot the cumulative stock return for the current factor combination
             plt.plot(factor_index_df["Cumulative Stock Return"], alpha=0.5)
 
-            # Append cumulative stock returns for averaging
-            cumulative_stock_returns.append(factor_index_df["Cumulative Stock Return"])
+            # Merge the cumulative stock return into the DataFrame
+            cumulative_stock_returns_df = cumulative_stock_returns_df.join(
+                factor_index_df[["Cumulative Stock Return"]],
+                how="outer", 
+                rsuffix=f"_{factors_tuple}"
+                )
 
         # Set the labels
         plt.xlabel("Date")
@@ -502,11 +516,11 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         # Show the plot
         plt.show()
 
-        # Compute the average equity curve across all factor combinations
-        eqcurve_mean = np.mean(cumulative_stock_returns, axis=0)
+        # Average the cumulative stock returns across the columns
+        eqcurve_mean = cumulative_stock_returns_df.mean(axis=1)
 
         # Calculate the mean CAGR
-        cagr_mean = (eqcurve_mean[-1] / eqcurve_mean[0])**(1 / (len(index_df) / 252)) - 1
+        cagr_mean = (eqcurve_mean.iloc[-1] / eqcurve_mean.iloc[0])**(1 / (len(eqcurve_mean) / 252)) - 1
 
         # Create a figure
         plt.figure(figsize=(10, 6))
@@ -1276,7 +1290,7 @@ def main():
     current_date = "2024-12-27"
 
     # Parameters for backtesting the momentum strategy
-    years = 7
+    years = 5
     interval = "2w"
     top = 5
     cap_threshold = 10
@@ -1300,8 +1314,9 @@ def main():
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
-    if years == 5:
-        end_dates = [end_date for end_date in end_dates if end_date >= generate_end_dates(5, current_date, interval=interval)[0]]
+    if years < 7:
+        cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
+        end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
 
     # Create a group of factors
     factors_group = [[i / 20, j / 20, k / 20] 
@@ -1309,22 +1324,14 @@ def main():
                      if i + j + k == 20]
 
     # Create the stock dictionary for all factor comnbinations
-    recreate_stock_dict = False
     for factors in tqdm(factors_group):
-        if recreate_stock_dict:
-            create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
-        else:
-            stock_dict_filename = f"Backtest/Stock dict/{infix}stock_dict{factors}{cap_label}.txt"
-            if not os.path.isfile(stock_dict_filename):
-                create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
+        create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
 
-    evaluate_momentum = False
-    if evaluate_momentum:
-        # Create a dictionary to store the returns of all factor combinations for the momentum strategy
-        create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    # Create a dictionary to store the returns of all factor combinations for the momentum strategy
+    create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
     # Save the statistics of all factor combinations of the momentum strategy
-    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params, reanalyse=True)
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
@@ -1335,13 +1342,13 @@ def main():
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
         
-    plot_momentum_equity_curve_all = False
+    plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
-
-    show_momentum_stats = True
+    
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)

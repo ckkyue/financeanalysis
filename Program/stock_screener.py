@@ -167,18 +167,17 @@ def check_conds_tech(index_name, df):
     
     return conds_tech_data
     
-def check_conds_fund(Y_growth, Q_growth, ROE):
+def check_conds_fund(Y_growth, Q_growth):
     """
     Check if the stock meets specified fundamental conditions.
 
     Parameters:
     - Y_growth (float): Yearly growth rate.
     - Q_growth (float): Quarterly growth rate.
-    0 ROE (float): Return on equity.
 
     Returns:
-    - conds_fund, cond_f2, cond_f3, cond_f4 (tuple): A tuple containing a boolean indicating overall condition fulfilment,
-           and individual condition results for Y_growth, Q_growth, and ROE.
+    - conds_fund, cond_f2, cond_f3 (tuple): A tuple containing a boolean indicating overall condition fulfilment,
+           and individual condition results for Y_growth, Q_growth.
     """
 
     # Check if the yearly growth rate is non-negative
@@ -192,17 +191,11 @@ def check_conds_fund(Y_growth, Q_growth, ROE):
         cond_f3 = Q_growth >= 0
     except Exception:
         cond_f3 = False
-
-    # Check if the return on equity is non-negative
-    try:
-        cond_f4 = ROE >= 0
-    except Exception:
-        cond_f4 = False
     
     # Overall condition is true if all individual conditions are met
-    conds_fund = cond_f2 and cond_f3 and cond_f4
+    conds_fund = cond_f2 and cond_f3
 
-    return conds_fund, cond_f2, cond_f3, cond_f4
+    return conds_fund, cond_f2, cond_f3
 
 # Check the Minervini conditions for the top performing stocks
 def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_infos, rs_volume_df, backtest=False):
@@ -292,9 +285,9 @@ def process_stock(stock, index_name, end_date, current_date, stock_dfs, stock_in
 
                 # Check fundamental conditions
                 if index_name == "^HSI":
-                    conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_nextY_growth, earnings_thisQ_growth, ROE)
+                    conds_fund, cond_f2, cond_f3 = check_conds_fund(EPS_nextY_growth, earnings_thisQ_growth)
                 else:
-                    conds_fund, cond_f2, cond_f3, cond_f4 = check_conds_fund(EPS_thisY_growth, EPS_QoQ_growth, ROE)
+                    conds_fund, cond_f2, cond_f3 = check_conds_fund(EPS_thisY_growth, EPS_QoQ_growth)
                 
                 if conds_fund:
                     # Gather additional stock information
@@ -589,7 +582,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         df.to_excel(writer, sheet_name="Sheet1", index=False)
         writer._save()
 
-def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, cap_threshold=1, backtest=False):
+def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS=90, period=252, cap_threshold=1, backtest=False, recreate_dict=False):
     """
     Create a dictionary of selected stocks based on analysis criteria.
 
@@ -603,6 +596,7 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
     - period (int): Analysis period in days. Default is 252.
     - cap_threshold (float): Minimum market capitalisation threshold. Default is 1 billion.
     - backtest (bool): Flag to indicate if backtesting is being performed.
+    - recreate_dict (bool): If True, recreate the dictionary even if it already exists. Default to False.
 
     Returns:
     - None: Exports results to a text file.
@@ -630,47 +624,48 @@ def create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, RS
         with open(stock_dict_filename, "r") as file:
             stock_dict = ast.literal_eval(file.read())
 
-    # Iterate over all end dates except the last one
-    for end_date in end_dates[:-1]:
-        # Format the end date for file naming
-        end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+    if not os.path.isfile(stock_dict_filename) or recreate_dict:
+        # Iterate over all end dates except the last one
+        for end_date in end_dates[:-1]:
+            # Format the end date for file naming
+            end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
 
-        # Define the filename for the screened stocks
-        filename = os.path.join(result_folder, f"{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
+            # Define the filename for the screened stocks
+            filename = os.path.join(result_folder, f"{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
 
-        # Read the data of the screened stocks
-        df = pd.read_excel(filename)
+            # Read the data of the screened stocks
+            df = pd.read_excel(filename)
 
-        # Calculate the EM rating
-        df = EM_rating(index_name, df, factors)
+            # Calculate the EM rating
+            df = EM_rating(index_name, df, factors)
 
-        # Identify the column of market cap
-        cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
-        if cap_col:
-            cap_col = cap_col[0]
+            # Identify the column of market cap
+            cap_col = [col for col in df.columns if re.match(r"Market Cap \(B, .*", col)]
+            if cap_col:
+                cap_col = cap_col[0]
 
-            # Apply market cap threshold if required
-            if cap_threshold:
-                df = df[df[cap_col] >= cap_threshold]
-        else:
-            raise ValueError("'Market Cap' column not found in the dataframe.")
+                # Apply market cap threshold if required
+                if cap_threshold:
+                    df = df[df[cap_col] >= cap_threshold]
+            else:
+                raise ValueError("'Market Cap' column not found in the dataframe.")
 
-        # Extract the number of stocks
-        stocks_num = df.shape[0]
+            # Extract the number of stocks
+            stocks_num = df.shape[0]
 
-        # Store top stocks or None if no stocks found
-        if stocks_num == 0:
-            stock_dict[end_date] = None
-        else:
-            stocks = df["Stock"].tolist()
-            stock_dict[end_date] = stocks
+            # Store top stocks or None if no stocks found
+            if stocks_num == 0:
+                stock_dict[end_date] = None
+            else:
+                stocks = df["Stock"].tolist()
+                stock_dict[end_date] = stocks
 
-        # Sort stock_dict by date
-        stock_dict = dict(sorted(stock_dict.items(), key=lambda x: dt.datetime.strptime(x[0], "%Y-%m-%d")))
+            # Sort stock_dict by date
+            stock_dict = dict(sorted(stock_dict.items(), key=lambda x: dt.datetime.strptime(x[0], "%Y-%m-%d")))
 
-    # Write the stock_dict to a file
-    with open(stock_dict_filename, "w") as file:
-        file.write(str(stock_dict))
+        # Write the stock_dict to a file
+        with open(stock_dict_filename, "w") as file:
+            file.write(str(stock_dict))
 
 # Main function
 def main():
