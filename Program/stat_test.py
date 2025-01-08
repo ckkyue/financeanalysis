@@ -4,7 +4,9 @@ from helper_functions import get_current_date, generate_end_dates, get_df, get_i
 from backtest import calculate_stats, get_momentum_labels
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
+from plot import *
 from scipy.stats import t
 import seaborn as sns
 
@@ -37,6 +39,89 @@ def ttest_1sample(values, specified_value):
     p_value = t.cdf(-t_stat, df=dof)
 
     return t_stat, p_value
+
+def plot_heatmap(data, xlabel, ylabel, title, benchmark=None, filename=None, cmap="RdYlGn", save=False, backtest=False):
+    """
+    Plots a heatmap based on the provided data.
+
+    Parameters:
+    - data (list of tuples): Input data in the form of [(x1, y1, z1), (x2, y2, z2), ...].
+    - xlabel (str): Label for the x-axis.
+    - ylabel (str): Label for the y-axis.
+    - title (str): Title of the plot.
+    - benchmark (float, optional): A benchmark value to be indicated on the plot. Default is None.
+    - filename (str, optional): The name of the file to save the figure. Default is None (no save).
+    - cmap (str, optional): Colourmap for the heatmap. Default is "RdYlGn" for a red-green colour scheme.
+    - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
+    - backtest (bool): Flag to indicate if backtesting is being performed. Default is False.
+
+    Returns:
+    - None: This function generates a plot and displays it or saves it to a file.
+    """
+
+    # Set the result folder based on backtest flag
+    if backtest:
+        result_folder = "Backtest"
+    else:
+        result_folder = "Result"
+
+    # Define the folder for saving figures
+    figure_folder = os.path.join(result_folder, "Figure")
+
+    # Convert data to a DataFrame
+    df = pd.DataFrame(data, columns=["x", "y", "z"])
+
+    # Pivot the DataFrame to create a matrix for the heatmap
+    matrix = df.pivot(index="y", columns="x", values="z")
+
+    # Extract the maximum value from the matrix
+    matrix_max = matrix.max().max()
+
+    # Extract the maximum value from the matrix for colour scaling
+    matrix_max = matrix.max().max()
+
+    # Create the heatmap
+    plt.figure(figsize=(10, 6))
+
+    # Plot heatmap with benchmark as the centre point
+    if benchmark is not None:
+        ax = sns.heatmap(matrix, annot=True, cmap=cmap, cbar=True, center=benchmark, vmin=0, vmax=matrix_max)
+
+        # Customize the colour bar to indicate where the benchmark is
+        ax.collections[0].colorbar.set_ticks([benchmark])
+        ax.collections[0].colorbar.set_ticklabels(["Benchmark"])
+    else:
+        ax = sns.heatmap(matrix, annot=True, cmap="RdYlGn", cbar=True)
+
+    # Reverse the y-axis
+    plt.gca().invert_yaxis()
+
+    # Annotate the benchmark value if provided
+    if benchmark is not None:
+        # Get current axis limits
+        xlim = plt.xlim()
+        ylim = plt.ylim()
+
+        # Position the benchmark annotation in the upper right corner
+        plt.annotate(f"Benchmark: {benchmark:.2f}", xy=(xlim[1], 0.95 * ylim[1]), color="black", ha="right", va="top", bbox={"facecolor": "white", "edgecolor": "black"})
+
+    # Set the title
+    plt.title(title)
+
+    # Set the labels
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    # Adjust the spacing
+    plt.tight_layout()
+
+    # Save the plot
+    if save:
+        filename = os.path.join(figure_folder, filename)
+        plt.savefig(filename, dpi=300)
+
+    # Show the plot
+    plt.show()
 
 # Main program
 def main():
@@ -97,41 +182,57 @@ def main():
 
     # Compare the statistics between the index and stocks selected by the momentum strategy
     # Initialise lists to store various statistics
-    CAGR_values = []
+    cagr_values = []
+    cagr_data = []
     sharpe_ratio_values = []
+    sharpe_ratio_data = []
     sortino_ratio_values = []
+    sortino_ratio_data = []
 
     # Iterate over the statistics of all factors to extract values
     for stats in factors_stats:
         mvp_factor, eps_yoy_factor, eps_qoq_factor = stats[0]
-        CAGR = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
+        cagr = stats[1][1][2] * 100 # Extract and convert CAGR to percentage
         sharpe_ratio = stats[1][1][4]
         sortino_ratio = stats[1][1][5]
-        CAGR_values.append(CAGR)
+        cagr_values.append(cagr)
+        cagr_data.append((mvp_factor, eps_yoy_factor, cagr))
         sharpe_ratio_values.append(sharpe_ratio)
+        sharpe_ratio_data.append((mvp_factor, eps_yoy_factor, sharpe_ratio))
         sortino_ratio_values.append(sortino_ratio)
+        sortino_ratio_data.append((mvp_factor, eps_yoy_factor, sortino_ratio))
 
     # Calculate the CAGR, Sharpe ratio, and Sortino ratio values of the index
     stats_index = calculate_stats(index_df, len(index_df) / 252)[1]
-    CAGR_index = stats_index[2] * 100
-    print(f"CAGR of index: {CAGR_index:.3e}.")
+    cagr_index = stats_index[2] * 100
+    print(f"CAGR of index: {cagr_index:.3e}.")
     sharpe_ratio_index = stats_index[4]
     print(f"Sharpe ratio of index: {sharpe_ratio_index:.3e}.")
     sortino_ratio_index = stats_index[5]
     print(f"Sortino ratio of index: {sortino_ratio_index:.3e}.")
 
     # Calculate the mean, SD, and t-statistic of CAGR, Sharpe ratio, and Sortino ratio values
-    CAGR_mean = np.mean(CAGR_values)
-    t_CAGR, p_CAGR = ttest_1sample(CAGR_values, CAGR_index)
+    cagr_mean = np.mean(cagr_values)
+    t_cagr, p_cagr = ttest_1sample(cagr_values, cagr_index)
     sharpe_ratio_mean = np.mean(sharpe_ratio_values)
     t_sharpe_ratio, p_sharpe_ratio = ttest_1sample(sharpe_ratio_values, sharpe_ratio_index)
     sortino_ratio_mean = np.mean(sortino_ratio_values)
     t_sortino_ratio, p_sortino_ratio = ttest_1sample(sortino_ratio_values, sortino_ratio_index)
 
     # Print the p-values
-    print(f"The mean of CAGR is {CAGR_mean:.3e}, and the p-value of is {p_CAGR:.3e}.")
+    print(f"The mean of CAGR is {cagr_mean:.3e}, and the p-value of is {p_cagr:.3e}.")
     print(f"The mean of Sharpe ratio is {sharpe_ratio_mean:.3e}, and the p-value is {p_sharpe_ratio:.3e}.")
     print(f"The mean of Sortino ratio is {sortino_ratio_mean:.3e}, and the p-value is {p_sortino_ratio:.3e}.")
+
+    # Plot the heatmaps
+    plot_heatmap(cagr_data, "MVP factor", "EPS YoY factor", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrdistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_heatmap(sharpe_ratio_data, "MVP factor", "EPS YoY factor", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpedistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_heatmap(sortino_ratio_data, "MVP factor", "EPS YoY factor", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinodistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+
+    # Plot the histograms
+    plot_hist(cagr_values, "CAGR (%)", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrhistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_hist(sharpe_ratio_values, "Sharpe", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpehistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_hist(sortino_ratio_values, "Sortino", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinohistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
 
     # Print the end time and total runtime
     end = dt.datetime.now()

@@ -1509,30 +1509,31 @@ def plot_volume5m(stock, volume5m_data, date, sma_period=50, save=False):
     # Show the plot
     plt.show()
 
-def plot_ndays_dist(df, col, title, xlabel, filename=None, save=False):
+def plot_hist(arr, xlabel, title, benchmark=None, filename=None, save=False, backtest=False):
     """
     Plot the distribution of a specified column from a DataFrame using a histogram and overlays a Gaussian curve.
 
     Parameters:
-    - df (DataFrame): The DataFrame containing the data to plot.
-    - col (str): The column name in the DataFrame to analyse.
-    - title (str): The title of the plot.
+    - arr (array-like): The numerical data to plot, provided as a list or NumPy array.
     - xlabel (str): The label for the x-axis.
+    - title (str): The title of the plot.
+    - benchmark (float, optional): A benchmark value to be indicated on the plot. Default is None.
     - filename (str, optional): The name of the file to save the figure. Default is None (no save).
     - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
+    - backtest (bool): Flag to indicate if backtesting is being performed. Default is False.
 
     Returns:
-    - None: This function displays a histogram with overlaid Gaussian curve and statistics.
+    - None: This function generates a histogram with an overlaid Gaussian curve and displays it.
     """
 
-    # Define the result folder
-    result_folder = "Result"
+    # Set the result folder based on backtest flag
+    if backtest:
+        result_folder = "Backtest"
+    else:
+        result_folder = "Result"
 
     # Define the folder for saving figures
     figure_folder = os.path.join(result_folder, "Figure")
-
-    # Extract the data array from the specified column
-    arr = df[col]
 
     # Create a figure
     plt.figure(figsize=(10, 6))
@@ -1558,6 +1559,10 @@ def plot_ndays_dist(df, col, title, xlabel, filename=None, save=False):
 
     # Add a dotted line for the mean value
     plt.axvline(mean, color="black", linestyle="dotted")
+
+    # Add a dotted line for the benchmark if provided
+    if benchmark is not None:
+        plt.axvline(benchmark, color="blue", linestyle="dotted")
     
     # Calculate the range for standard deviation lines
     zscore_min = np.ceil((mean - xmin) / sd)
@@ -1573,14 +1578,19 @@ def plot_ndays_dist(df, col, title, xlabel, filename=None, save=False):
     kurt_value = kurtosis(arr)
 
     # Add mean and kurtosis to the plot
-    plt.text(0.95, 0.95, f"Mean: {mean:.4f}\nKurtosis: {kurt_value:.2f}", 
-             ha="right", va="top", transform=plt.gca().transAxes, 
-             bbox={'facecolor': 'white', 'alpha': 0.8, 'pad': 5})
+    if benchmark is not None:
+        text = f"Mean: {mean:.4f}\nKurtosis: {kurt_value:.2f}\nBenchmark: {benchmark:.4f}"
+    else:
+        text = f"Mean: {mean:.4f}\nKurtosis: {kurt_value:.2f}"
+        
+    plt.text(0.95, 0.95, text, ha="right", va="top", transform=plt.gca().transAxes, bbox={"facecolor": "white", "alpha": 0.8, "pad": 5})
 
-    # Set title and labels
-    plt.title(f"{title}")
+    # Set the labels
     plt.xlabel(f"{xlabel}")
     plt.ylabel("Count")
+
+    # Set the title
+    plt.title(f"{title}")
 
     # Set y-ticks to display only integer values
     plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))

@@ -261,6 +261,9 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                     index_df["LKNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index LKNN Signal"].shift(1)
                 index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
                 index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
+        index_df.to_csv(filename)
+        print(f"Equity curve {filename} saved.")
+
     else:
         print(f"Equity curve {filename} saved before.")
         index_df = pd.read_csv(filename)
@@ -345,7 +348,8 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
 
     # Define the filename for saving the momentum dictionary
-    filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
+    momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
+    filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
 
     # Check if the file exists and whether to recreate it
     if not os.path.isfile(filename) or recreate_dict:
@@ -379,6 +383,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
         with open(filename, "wb") as file:
             pickle.dump(momentum_dict, file)
         print("Dictionary of the momentum strategy saved.")
+
     else:
         print("Dictionary of the momentum strategy saved before.")
 
@@ -456,7 +461,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         
     else:
         # Load the momentum dictionary if it exists
-        momentum_dict_filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.pkl")
+        momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
+        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.pkl")
         if os.path.isfile(momentum_dict_filename):
             with open(momentum_dict_filename, "rb") as file:
                 momentum_dict = pickle.load(file)
@@ -672,7 +678,8 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
 
     # Save the plot
     if save:
-        filename = os.path.join(result_folder, f"Figure/{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png")
+        figure_folder = os.path.join(result_folder, "Figure")
+        filename = os.path.join(figure_folder, f"{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png")
         plt.savefig(filename, dpi=300)
 
     # Show the plot
@@ -710,7 +717,8 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
 
     # Define the filename for saving the statistics
-    filename = os.path.join(result_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy")
+    factors_stats_folder = os.path.join(result_folder, "Factors stats")
+    filename = os.path.join(factors_stats_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy")
 
     # Check if pre-existing data exists or if reanalysis is required
     if not os.path.isfile(filename) or reanalyse:
@@ -718,7 +726,8 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
         factors_stats = np.empty((len(factors_group), 2), dtype=object)
 
         # Define the filename for the momentum dictionary
-        momentum_dict_filename = os.path.join(result_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
+        momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
+        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
 
         # Load the momentum dictionary from file
         with open(momentum_dict_filename, "rb") as file:
@@ -1263,7 +1272,7 @@ def main():
     start = dt.datetime.now()
 
     # Define the paths for the folders
-    folders = ["Backtest", "Backtest/Equity curve", "Backtest/Figure", "Backtest/Stock dict"]
+    folders = ["Backtest", "Backtest/Equity curve", "Backtest/Factors stats", "Backtest/Figure", "Backtest/Momentum dict", "Backtest/Stock dict"]
 
     # Check if the folders exist, create them if they do not
     for folder in folders:
@@ -1333,7 +1342,7 @@ def main():
     # Save the statistics of all factor combinations of the momentum strategy
     save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
@@ -1342,7 +1351,7 @@ def main():
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
         
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
@@ -1351,7 +1360,7 @@ def main():
     show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
-        factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
+        factors_stats = np.load(f"Backtest/Factor stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
 
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
