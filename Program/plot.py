@@ -8,7 +8,7 @@ import numpy as np
 import os
 import pandas as pd
 from scipy.signal import argrelextrema
-from scipy.stats import norm, kurtosis, linregress
+from scipy.stats import kurtosis, linregress, norm, skew
 import seaborn as sns
 from statsmodels.tsa.stattools import acf
 from technicals import *
@@ -1574,16 +1574,19 @@ def plot_hist(arr, xlabel, title, benchmark=None, filename=None, save=False, bac
     for i in range(1, int(zscore_max)):
         plt.axvline(mean + i * sd, color="red", linestyle="dotted")
 
+    # Calculate the skewness of the data
+    skew_value = skew(arr)
+
     # Calculate the kurtosis of the data
     kurt_value = kurtosis(arr)
 
     # Add mean and kurtosis to the plot
     if benchmark is not None:
-        text = f"Mean: {mean:.4f}\nKurtosis: {kurt_value:.2f}\nBenchmark: {benchmark:.4f}"
+        text = f"Mean: {mean:.4f}\nSkew: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}\nBenchmark: {benchmark:.4f}"
     else:
-        text = f"Mean: {mean:.4f}\nKurtosis: {kurt_value:.2f}"
+        text = f"Mean: {mean:.4f}\nSkew: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}"
         
-    plt.text(0.95, 0.95, text, ha="right", va="top", transform=plt.gca().transAxes, bbox={"facecolor": "white", "alpha": 0.8, "pad": 5})
+    plt.text(0.975, 0.975, text, ha="right", va="top", transform=plt.gca().transAxes, bbox={"facecolor": "white", "alpha": 0.8, "pad": 5})
 
     # Set the labels
     plt.xlabel(f"{xlabel}")

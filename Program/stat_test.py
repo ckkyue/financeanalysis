@@ -225,14 +225,14 @@ def main():
     print(f"The mean of Sortino ratio is {sortino_ratio_mean:.3e}, and the p-value is {p_sortino_ratio:.3e}.")
 
     # Plot the heatmaps
-    plot_heatmap(cagr_data, "MVP factor", "EPS YoY factor", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrdistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
-    plot_heatmap(sharpe_ratio_data, "MVP factor", "EPS YoY factor", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpedistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
-    plot_heatmap(sortino_ratio_data, "MVP factor", "EPS YoY factor", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinodistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_heatmap(cagr_data, "MVP factor", "EPS YoY factor", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrdistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
+    plot_heatmap(sharpe_ratio_data, "MVP factor", "EPS YoY factor", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpedistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
+    plot_heatmap(sortino_ratio_data, "MVP factor", "EPS YoY factor", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinodistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
 
     # Plot the histograms
-    plot_hist(cagr_values, "CAGR (%)", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrhistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
-    plot_hist(sharpe_ratio_values, "Sharpe", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpehistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
-    plot_hist(sortino_ratio_values, "Sortino", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinohistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", save=True, backtest=True)
+    plot_hist(cagr_values, "CAGR (%)", f"CAGR distribution ({years} years {interval} cap {cap_threshold})", benchmark=cagr_index, filename=f"cagrhistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
+    plot_hist(sharpe_ratio_values, "Sharpe", f"Sharpe distribution ({years} years {interval} cap {cap_threshold})", benchmark=sharpe_ratio_index, filename=f"sharpehistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
+    plot_hist(sortino_ratio_values, "Sortino", f"Sortino distribution ({years} years {interval} cap {cap_threshold})", benchmark=sortino_ratio_index, filename=f"sortinohistyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png", backtest=True)
 
     # Print the end time and total runtime
     end = dt.datetime.now()

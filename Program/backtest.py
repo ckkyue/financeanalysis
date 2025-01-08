@@ -13,7 +13,7 @@ import pandas as pd
 pd.options.mode.chained_assignment = None
 import pickle
 from plot import *
-from scipy.stats import skew, kurtosis
+from scipy.stats import kurtosis, skew
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
@@ -97,11 +97,12 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
 
     # Define the filename for saving the index DataFrame
     eqcurve_folder = os.path.join(result_folder, "Equity curve")
-    filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
 
-    # Save the index DataFrame
-    if not os.path.isfile(filename) or reanalyse or knn_params:
-        if factors is not None:
+    if factors is not None:
+        filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+
+        # Save the index DataFrame
+        if not os.path.isfile(filename) or reanalyse or knn_params:
             # Define the folder containing stock dictionaries
             stock_dict_folder = os.path.join(result_folder, "Stock dict")
 
@@ -120,45 +121,44 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                 print(f"Error reading stock_dict file: {e}")
                 return None
 
-        # Get the price data of the index
-        index_df = get_df(index_name, current_date)
+            # Get the price data of the index
+            index_df = get_df(index_name, current_date)
 
-        # Calculate moving averages if required
-        if sma_crossover:
-            for i in [period_short, period_long]:
-                index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
-                index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
+            # Calculate moving averages if required
+            if sma_crossover:
+                for i in [period_short, period_long]:
+                    index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
+                    index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
 
-        # Apply KNN model if parameters are provided
-        if knn_params is not None:
-            # Import KNN-related functions
-            from knn_model import knn_accuracy, preprocess_knn
+            # Apply KNN model if parameters are provided
+            if knn_params is not None:
+                # Import KNN-related functions
+                from knn_model import knn_accuracy, preprocess_knn
 
-            # Extract KNN parameters
-            k = knn_params["k"]
-            lookback = knn_params["lookback"]
-            features = knn_params["features"]
+                # Extract KNN parameters
+                k = knn_params["k"]
+                lookback = knn_params["lookback"]
+                features = knn_params["features"]
 
-            # Preprocess data for the KNN model
-            X_train_index, Y_train_index, X_test_index, Y_test_index, df_test_index = preprocess_knn(index_df, end_dates[0], end_dates[-1], lookback, features)
+                # Preprocess data for the KNN model
+                X_train_index, Y_train_index, X_test_index, Y_test_index, df_test_index = preprocess_knn(index_df, end_dates[0], end_dates[-1], lookback, features)
 
-            # Train and evaluate the KNN model
-            accuracy_train_knn_index, accuracy_test_knn_index, cm_train_knn_index, cm_test_knn_index, X_train_knn_index, X_test_knn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k)
-            accuracy_train_lknn_index, accuracy_test_lknn_index, cm_train_lknn_index, cm_test_lknn_index, X_train_lknn_index, X_test_lknn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k, lorentzian=True)
+                # Train and evaluate the KNN model
+                accuracy_train_knn_index, accuracy_test_knn_index, cm_train_knn_index, cm_test_knn_index, X_train_knn_index, X_test_knn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k)
+                accuracy_train_lknn_index, accuracy_test_lknn_index, cm_train_lknn_index, cm_test_lknn_index, X_train_lknn_index, X_test_lknn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k, lorentzian=True)
 
-            # Store KNN signals in the index DataFrame
-            index_df.loc[end_dates[0] : end_dates[-1], f"Index KNN Signal"] = X_test_knn_index
-            index_df.loc[end_dates[0] : end_dates[-1], f"Index LKNN Signal"] = X_test_lknn_index
+                # Store KNN signals in the index DataFrame
+                index_df.loc[end_dates[0] : end_dates[-1], f"Index KNN Signal"] = X_test_knn_index
+                index_df.loc[end_dates[0] : end_dates[-1], f"Index LKNN Signal"] = X_test_lknn_index
 
-        # Filter index data to the backtesting period
-        index_df = index_df[end_dates[0] : end_dates[-1]]
+            # Filter index data to the backtesting period
+            index_df = index_df[end_dates[0] : end_dates[-1]]
 
-        # Calculate percent change and cumulative return for the index
-        index_df["Percent Change"] = index_df["Close"].pct_change()
-        index_df.fillna({"Percent Change": 0}, inplace=True)
-        index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
+            # Calculate percent change and cumulative return for the index
+            index_df["Percent Change"] = index_df["Close"].pct_change()
+            index_df.fillna({"Percent Change": 0}, inplace=True)
+            index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
-        if factors is not None:
             # Extract the list of stocks for each backtesting period
             stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
 
@@ -262,18 +262,22 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                     index_df["LKNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index LKNN Signal"].shift(1)
                 index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
                 index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
-        index_df.to_csv(filename)
-        print(f"Equity curve {filename} saved.")
-
+            index_df.to_csv(filename)
+            print(f"Equity curve {filename} saved.")
+        else:
+            print(f"Equity curve {filename} saved before.")
+            index_df = pd.read_csv(filename)
+            index_df["Date"] = pd.to_datetime(index_df["Date"])
+            index_df.set_index("Date", inplace=True)
+            if years < 7:
+                cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
+                end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
+                index_df = index_df[index_df.index >= end_dates[0]]
     else:
-        print(f"Equity curve {filename} saved before.")
-        index_df = pd.read_csv(filename)
-        index_df["Date"] = pd.to_datetime(index_df["Date"])
-        index_df.set_index("Date", inplace=True)
-        if years < 7:
-            cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
-            end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
-            index_df = index_df[index_df.index >= end_dates[0]]
+        index_df = get_df(index_name, current_date)
+
+        # Filter index data to the backtesting period
+        index_df = index_df[end_dates[0] : end_dates[-1]]
 
     # Return results, including confusion matrices if KNN parameters are provided
     if knn_params is not None:
@@ -433,7 +437,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Plot the cumulative index return and cumulative stock return
         plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
-        plt.plot(index_df["Cumulative Stock Return"], label=f"Stocks {factors}")
+        plt.plot(index_df["Cumulative Stock Return"] / index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], label=f"Stocks {factors}")
 
         # Set the labels
         plt.xlabel("Date")
@@ -447,7 +451,6 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Set the legend
         plt.legend(loc="upper left")
-
         # Adjust the spacing
         plt.tight_layout()
 
@@ -489,14 +492,10 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
             factor_index_df = momentum_dict[factors_tuple]
 
             # Plot the cumulative stock return for the current factor combination
-            plt.plot(factor_index_df["Cumulative Stock Return"], alpha=0.5)
+            plt.plot(factor_index_df["Cumulative Stock Return"] / factor_index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], alpha=0.5)
 
             # Merge the cumulative stock return into the DataFrame
-            cumulative_stock_returns_df = cumulative_stock_returns_df.join(
-                factor_index_df[["Cumulative Stock Return"]],
-                how="outer", 
-                rsuffix=f"_{factors_tuple}"
-                )
+            cumulative_stock_returns_df = cumulative_stock_returns_df.join(factor_index_df["Cumulative Stock Return"] / factor_index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], how="outer", rsuffix=f"_{factors_tuple}")
 
         # Set the labels
         plt.xlabel("Date")
@@ -1016,7 +1015,7 @@ def calculate_stats(df, years, name=None, risk_free_rate=0.03):
         # Calculate the total return for the strategy
         total_return = df[f"Cumulative {name} Return"].iloc[-1]
     elif name is not None:
-        # If a name is provided (but not "Strategy"), use the corresponding cumulative return
+        df[f"Cumulative {name} Return"] = (df[f"{name} Percent Change"] + 1).cumprod()
         total_return = df[f"Cumulative {name} Return"].iloc[-1]
     else:
         # If no name is provided, use the total return from the original dataframe
@@ -1327,23 +1326,23 @@ def main():
     if years < 7:
         cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
         end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
-
+    
     # Create a group of factors
     factors_group = [[i / 20, j / 20, k / 20] 
                      for i, j, k in itertools.product(range(21), repeat=3)
                      if i + j + k == 20]
-
+    
     # Create the stock dictionary for all factor comnbinations
     for factors in tqdm(factors_group):
         create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
-
+    
     # Create a dictionary to store the returns of all factor combinations for the momentum strategy
     create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
     # Save the statistics of all factor combinations of the momentum strategy
     save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
@@ -1351,14 +1350,14 @@ def main():
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[0])
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
-        
-    plot_momentum_equity_curve_all = False
+    
+    plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
     
-    show_momentum_stats = False
+    show_momentum_stats = True
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/Factors stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
@@ -1392,7 +1391,7 @@ def main():
         index_df = get_df(index_name, current_date)
         returns_arr = calculate_stats(index_df, years)
         plot_index_equity_curve(index_name, index_dict, 10000, years, returns_arr)
-        
+    
     # Print the end time and total runtime
     end = dt.datetime.now()
     print(end, "\n")
