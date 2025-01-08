@@ -178,7 +178,7 @@ def main():
     infix = get_infix("^GSPC", index_dict, True)
 
     # Load the statistics of all factors
-    factors_stats = np.load(f"Backtest/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
+    factors_stats = np.load(f"Backtest/Factors stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
 
     # Compare the statistics between the index and stocks selected by the momentum strategy
     # Initialise lists to store various statistics
