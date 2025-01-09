@@ -98,186 +98,181 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     # Define the filename for saving the index DataFrame
     eqcurve_folder = os.path.join(result_folder, "Equity curve")
 
-    if factors is not None:
-        filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+    filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
 
-        # Save the index DataFrame
-        if not os.path.isfile(filename) or reanalyse or knn_params:
-            # Define the folder containing stock dictionaries
-            stock_dict_folder = os.path.join(result_folder, "Stock dict")
+    # Save the index DataFrame
+    if not os.path.isfile(filename) or reanalyse or knn_params:
+        # Define the folder containing stock dictionaries
+        stock_dict_folder = os.path.join(result_folder, "Stock dict")
 
-            # Define the filename of the stock dictionary
-            stock_dict_filename = os.path.join(stock_dict_folder, f"{infix}stock_dict{factors}{cap_label}.txt")
-            
-            # Attempt to load the stock dictionary from file
-            try:
-                if os.path.isfile(stock_dict_filename):
-                    with open(stock_dict_filename, "r") as file:
-                        stock_dict = ast.literal_eval(file.read())
-                else:
-                    print("Error: stock_dict file not found.")
-                    return None
-            except Exception as e:
-                print(f"Error reading stock_dict file: {e}")
+        # Define the filename of the stock dictionary
+        stock_dict_filename = os.path.join(stock_dict_folder, f"{infix}stock_dict{factors}{cap_label}.txt")
+        
+        # Attempt to load the stock dictionary from file
+        try:
+            if os.path.isfile(stock_dict_filename):
+                with open(stock_dict_filename, "r") as file:
+                    stock_dict = ast.literal_eval(file.read())
+            else:
+                print("Error: stock_dict file not found.")
                 return None
+        except Exception as e:
+            print(f"Error reading stock_dict file: {e}")
+            return None
 
-            # Get the price data of the index
-            index_df = get_df(index_name, current_date)
-
-            # Calculate moving averages if required
-            if sma_crossover:
-                for i in [period_short, period_long]:
-                    index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
-                    index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
-
-            # Apply KNN model if parameters are provided
-            if knn_params is not None:
-                # Import KNN-related functions
-                from knn_model import knn_accuracy, preprocess_knn
-
-                # Extract KNN parameters
-                k = knn_params["k"]
-                lookback = knn_params["lookback"]
-                features = knn_params["features"]
-
-                # Preprocess data for the KNN model
-                X_train_index, Y_train_index, X_test_index, Y_test_index, df_test_index = preprocess_knn(index_df, end_dates[0], end_dates[-1], lookback, features)
-
-                # Train and evaluate the KNN model
-                accuracy_train_knn_index, accuracy_test_knn_index, cm_train_knn_index, cm_test_knn_index, X_train_knn_index, X_test_knn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k)
-                accuracy_train_lknn_index, accuracy_test_lknn_index, cm_train_lknn_index, cm_test_lknn_index, X_train_lknn_index, X_test_lknn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k, lorentzian=True)
-
-                # Store KNN signals in the index DataFrame
-                index_df.loc[end_dates[0] : end_dates[-1], f"Index KNN Signal"] = X_test_knn_index
-                index_df.loc[end_dates[0] : end_dates[-1], f"Index LKNN Signal"] = X_test_lknn_index
-
-            # Filter index data to the backtesting period
-            index_df = index_df[end_dates[0] : end_dates[-1]]
-
-            # Calculate percent change and cumulative return for the index
-            index_df["Percent Change"] = index_df["Close"].pct_change()
-            index_df.fillna({"Percent Change": 0}, inplace=True)
-            index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
-
-            # Extract the list of stocks for each backtesting period
-            stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
-
-            # Iterate over all backtesting periods
-            for i in tqdm(range(len(end_dates) - 1)):
-                start_date, end_date = end_dates[i], end_dates[i + 1]
-                stocks = stocks_list[i]
-
-                # Determine if short SMA is above long SMA or if SMA crossover is disabled
-                if sma_crossover:
-                    sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
-                else:
-                    sma_cond = True
-                factor = 1 if sma_cond else 0
-
-                if stocks is not None:
-                    # Iterate over selected stocks
-                    for j, stock in enumerate(stocks[:min(top, len(stocks))]):
-
-                        # Get the price data of the stock
-                        df = get_df(stock, current_date)
-                        
-                        # Check if the dataframe is empty
-                        if df is None or df.empty:
-                            continue
-                            
-                        try:
-                            # Filter the price data of the stock
-                            df = df[start_date : end_date]
-
-                            # Calculate the percentage change of the stock
-                            df.loc[:, "Percent Change"] = df["Close"].pct_change()
-                            df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
-
-                            # Calculate the cumulative return of the stock
-                            df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
-
-                            # Handle stop loss
-                            sell_date = None
-                            stoploss_active = False
-
-                            if stoploss_threshold is not None:
-                                df["Stopped Out"] = df["Cumulative Return"].shift(1) < (1 - stoploss_threshold)
-
-                                for idx in df.index:
-                                    if stoploss_active:
-                                        # After stopped out, set the percent change to 0
-                                        df.loc[idx, "Percent Change"] = 0
-                                    elif df.loc[idx, "Stopped Out"]:
-                                        # Apply stop loss and record the sell date
-                                        stoploss_active = True
-                                        sell_date = idx
-                                        df.loc[idx, "Percent Change"] = ((1 - fee_rate) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
-                                
-                                # If no stop loss, assign the end_date as sell_date
-                                if sell_date is None:
-                                    sell_date = end_date
-                                    df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
-
-                                # Calculate the cumulative return of the stock again
-                                df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
-                            
-                            else:
-                                sell_date = end_date
-                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
-
-                            # Store results in the index DataFrame
-                            index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
-                            index_df.loc[start_date : sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
-                            index_df.loc[sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = 0
-                            index_df.loc[sell_date, f"Sell Stock {str(j + 1)} Percent Change"] = df.loc[sell_date, "Percent Change"]
-                            index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
-
-                        except Exception as e:
-                            print(f"Error calculating returns for {stock}: {e}.")
-                            pass
-
-                    # Adjust percent change columns by the number of stocks
-                    for j in range(min(top, len(stocks))):
-                        col_buy = f"Buy Stock {j + 1} Percent Change"
-                        col_sell = f"Sell Stock {j + 1} Percent Change"
-                        for col in [col_buy, col_sell]:
-                            if col in index_df.columns:
-                                index_df.loc[start_date : end_date, col] *= factor / top
-                    
-            # Calculate overall stock percent change and cumulative return
-            index_df["Stock Percent Change"] = 0
-            for i in range(top):
-                index_df.fillna({f"Buy Stock {i + 1} Percent Change": 0}, inplace=True)
-                index_df.fillna({f"Sell Stock {i + 1} Percent Change": 0}, inplace=True)
-                index_df["Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"])
-            index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
-
-            # Calculate cumulative returns for KNN signals
-            if knn_params is not None:
-                index_df["KNN Stock Percent Change"] = 0
-                index_df["LKNN Stock Percent Change"] = 0
-
-                for i in range(top):
-                    index_df["KNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index KNN Signal"].shift(1)
-                    index_df["LKNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index LKNN Signal"].shift(1)
-                index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
-                index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
-            index_df.to_csv(filename)
-            print(f"Equity curve {filename} saved.")
-        else:
-            print(f"Equity curve {filename} saved before.")
-            index_df = pd.read_csv(filename)
-            index_df["Date"] = pd.to_datetime(index_df["Date"])
-            index_df.set_index("Date", inplace=True)
-            if years < 7:
-                cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
-                end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
-                index_df = index_df[index_df.index >= end_dates[0]]
-    else:
+        # Get the price data of the index
         index_df = get_df(index_name, current_date)
+
+        # Calculate moving averages if required
+        if sma_crossover:
+            for i in [period_short, period_long]:
+                index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
+                index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
+
+        # Apply KNN model if parameters are provided
+        if knn_params is not None:
+            # Import KNN-related functions
+            from knn_model import knn_accuracy, preprocess_knn
+
+            # Extract KNN parameters
+            k = knn_params["k"]
+            lookback = knn_params["lookback"]
+            features = knn_params["features"]
+
+            # Preprocess data for the KNN model
+            X_train_index, Y_train_index, X_test_index, Y_test_index, df_test_index = preprocess_knn(index_df, end_dates[0], end_dates[-1], lookback, features)
+
+            # Train and evaluate the KNN model
+            accuracy_train_knn_index, accuracy_test_knn_index, cm_train_knn_index, cm_test_knn_index, X_train_knn_index, X_test_knn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k)
+            accuracy_train_lknn_index, accuracy_test_lknn_index, cm_train_lknn_index, cm_test_lknn_index, X_train_lknn_index, X_test_lknn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k, lorentzian=True)
+
+            # Store KNN signals in the index DataFrame
+            index_df.loc[end_dates[0] : end_dates[-1], f"Index KNN Signal"] = X_test_knn_index
+            index_df.loc[end_dates[0] : end_dates[-1], f"Index LKNN Signal"] = X_test_lknn_index
 
         # Filter index data to the backtesting period
         index_df = index_df[end_dates[0] : end_dates[-1]]
+
+        # Calculate percent change and cumulative return for the index
+        index_df["Percent Change"] = index_df["Close"].pct_change()
+        index_df.fillna({"Percent Change": 0}, inplace=True)
+        index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
+
+        # Extract the list of stocks for each backtesting period
+        stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
+
+        # Iterate over all backtesting periods
+        for i in tqdm(range(len(end_dates) - 1)):
+            start_date, end_date = end_dates[i], end_dates[i + 1]
+            stocks = stocks_list[i]
+
+            # Determine if short SMA is above long SMA or if SMA crossover is disabled
+            if sma_crossover:
+                sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
+            else:
+                sma_cond = True
+            factor = 1 if sma_cond else 0
+
+            if stocks is not None:
+                # Iterate over selected stocks
+                for j, stock in enumerate(stocks[:min(top, len(stocks))]):
+
+                    # Get the price data of the stock
+                    df = get_df(stock, current_date)
+                    
+                    # Check if the dataframe is empty
+                    if df is None or df.empty:
+                        continue
+                        
+                    try:
+                        # Filter the price data of the stock
+                        df = df[start_date : end_date]
+
+                        # Calculate the percentage change of the stock
+                        df.loc[:, "Percent Change"] = df["Close"].pct_change()
+                        df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
+
+                        # Calculate the cumulative return of the stock
+                        df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+
+                        # Handle stop loss
+                        sell_date = None
+                        stoploss_active = False
+
+                        if stoploss_threshold is not None:
+                            df["Stopped Out"] = df["Cumulative Return"].shift(1) < (1 - stoploss_threshold)
+
+                            for idx in df.index:
+                                if stoploss_active:
+                                    # After stopped out, set the percent change to 0
+                                    df.loc[idx, "Percent Change"] = 0
+                                elif df.loc[idx, "Stopped Out"]:
+                                    # Apply stop loss and record the sell date
+                                    stoploss_active = True
+                                    sell_date = idx
+                                    df.loc[idx, "Percent Change"] = ((1 - fee_rate) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
+                            
+                            # If no stop loss, assign the end_date as sell_date
+                            if sell_date is None:
+                                sell_date = end_date
+                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+
+                            # Calculate the cumulative return of the stock again
+                            df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+                        
+                        else:
+                            sell_date = end_date
+                            df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+
+                        # Store results in the index DataFrame
+                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
+                        index_df.loc[start_date : sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
+                        index_df.loc[sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = 0
+                        index_df.loc[sell_date, f"Sell Stock {str(j + 1)} Percent Change"] = df.loc[sell_date, "Percent Change"]
+                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
+
+                    except Exception as e:
+                        print(f"Error calculating returns for {stock}: {e}.")
+                        pass
+
+                # Adjust percent change columns by the number of stocks
+                for j in range(min(top, len(stocks))):
+                    col_buy = f"Buy Stock {j + 1} Percent Change"
+                    col_sell = f"Sell Stock {j + 1} Percent Change"
+                    for col in [col_buy, col_sell]:
+                        if col in index_df.columns:
+                            index_df.loc[start_date : end_date, col] *= factor / top
+                
+        # Calculate overall stock percent change and cumulative return
+        index_df["Stock Percent Change"] = 0
+        for i in range(top):
+            index_df.fillna({f"Buy Stock {i + 1} Percent Change": 0}, inplace=True)
+            index_df.fillna({f"Sell Stock {i + 1} Percent Change": 0}, inplace=True)
+            index_df["Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"])
+        index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
+
+        # Calculate cumulative returns for KNN signals
+        if knn_params is not None:
+            index_df["KNN Stock Percent Change"] = 0
+            index_df["LKNN Stock Percent Change"] = 0
+
+            for i in range(top):
+                index_df["KNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index KNN Signal"].shift(1)
+                index_df["LKNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index LKNN Signal"].shift(1)
+            index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
+            index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
+        index_df.to_csv(filename)
+        print(f"Equity curve {filename} saved.")
+    else:
+        print(f"Equity curve {filename} saved before.")
+        index_df = pd.read_csv(filename)
+        index_df["Date"] = pd.to_datetime(index_df["Date"])
+        index_df.set_index("Date", inplace=True)
+        if years < 7:
+            cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
+            end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
+            index_df = index_df[index_df.index >= end_dates[0]]
+        
 
     # Return results, including confusion matrices if KNN parameters are provided
     if knn_params is not None:
@@ -1355,8 +1350,10 @@ def main():
     
     plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
+        index_df = get_df(index_name, current_date)
+        # Filter index data to the backtesting period
+        index_df = index_df[end_dates[0] : end_dates[-1]]
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, None, momentum_params, knn_params=knn_params)
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
     
     show_momentum_stats = True
