@@ -7,6 +7,7 @@ import os
 import re
 from requests_ratelimiter import LimiterSession
 from scipy.stats import linregress
+import time
 import yfinance as yf
 
 def check_DST(start):
@@ -261,7 +262,7 @@ def get_stock_info(stock):
     """
 
     try:
-        # time.sleep(0.5)
+        time.sleep(0.5)
         return yf.Ticker(stock, session=LimiterSession(per_second=3)).info
     
     except Exception as e:
