@@ -437,7 +437,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Plot the cumulative index return and cumulative stock return
         plt.plot(index_df["Cumulative Return"], label=index_dict[index_name])
-        plt.plot(index_df["Cumulative Stock Return"] / index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], label=f"Stocks {factors}")
+        scaling_factor = 1 / index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0]
+        plt.plot(index_df["Cumulative Stock Return"] * scaling_factor, label=f"Stocks {factors}")
 
         # Set the labels
         plt.xlabel("Date")
@@ -492,10 +493,11 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
             factor_index_df = momentum_dict[factors_tuple]
 
             # Plot the cumulative stock return for the current factor combination
-            plt.plot(factor_index_df["Cumulative Stock Return"] / factor_index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], alpha=0.5)
+            scaling_factor = 1 / factor_index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0]
+            plt.plot(factor_index_df["Cumulative Stock Return"] * scaling_factor, alpha=0.5)
 
             # Merge the cumulative stock return into the DataFrame
-            cumulative_stock_returns_df = cumulative_stock_returns_df.join(factor_index_df["Cumulative Stock Return"] / factor_index_df["Cumulative Stock Return"].iloc[0] * index_df["Cumulative Return"].iloc[0], how="outer", rsuffix=f"_{factors_tuple}")
+            cumulative_stock_returns_df = cumulative_stock_returns_df.join(factor_index_df["Cumulative Stock Return"] * scaling_factor, how="outer", rsuffix=f"_{factors_tuple}")
 
         # Set the labels
         plt.xlabel("Date")
@@ -1342,7 +1344,7 @@ def main():
     # Save the statistics of all factor combinations of the momentum strategy
     save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
 
-    plot_momentum_equity_curve_single = False
+    plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
