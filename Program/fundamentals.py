@@ -489,8 +489,17 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
     else:
         recent_earning_date = current_date
 
+    # Scrape the fundamentals data from Finviz if end date is later than recent earning date
+    if end_date >= recent_earning_date:
+        quote = Quote(ticker=stock)
+        fundamental_df = quote.fundamental_df.loc[:, columns].map(fundamentals_map)
+        data = fundamental_df.values[0]
+        EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = *data,
+    else:
+        EPS_past5Y_growth = EPS_thisY_growth = EPS_QoQ_growth = ROE = "N/A"
+
     # Read the fundamentals data from CSV if end date is earlier than recent earning date
-    if end_date < recent_earning_date:
+    if end_date < recent_earning_date or any(val == "N/A" for val in [EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE]):
         if earning_dates:
             # Filter the earning dates
             earning_dates = [earning_date for earning_date in earning_dates if earning_date < end_date]
@@ -498,8 +507,8 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
             # Get the most recent report date
             recent_report_date = max(earning_dates)
 
-            # Estimate the recent report date by shifting 3 months backwards from end date
         else:
+            # Estimate the recent report date by shifting 3 months backwards from end date
             recent_report_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - relativedelta(months=3)).strftime("%Y-%m-%d")
 
         # Get the latest CSV date
@@ -536,22 +545,21 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
                 EPS_lastY = "N/A"
 
             # Calculate the growth rates of EPS values
-            EPS_past5Y_growth = round(1 / 5 * (EPS_thisY / EPS_last5Y) / np.abs(EPS_last5Y) * 100, 2) if EPS_thisY != "N/A" and EPS_last5Y != "N/A" and EPS_last5Y != 0 else "N/A"
-            EPS_thisY_growth = round((EPS_thisY - EPS_lastY) / np.abs(EPS_lastY) * 100, 2) if EPS_thisY != "N/A" and EPS_lastY != "N/A" and EPS_lastY != 0 else "N/A"
-            EPS_QoQ_growth = round((EPS_thisQ - EPS_last3Q) / np.abs(EPS_last3Q) * 100, 2) if EPS_thisQ != "N/A" and EPS_last3Q != "N/A" and EPS_last3Q != 0 else "N/A"
+            EPS_past5Y_growth_csv = round(1 / 5 * (EPS_thisY / EPS_last5Y) / np.abs(EPS_last5Y) * 100, 2) if EPS_thisY != "N/A" and EPS_last5Y != "N/A" and EPS_last5Y != 0 else "N/A"
+            EPS_thisY_growth_csv = round((EPS_thisY - EPS_lastY) / np.abs(EPS_lastY) * 100, 2) if EPS_thisY != "N/A" and EPS_lastY != "N/A" and EPS_lastY != 0 else "N/A"
+            EPS_QoQ_growth_csv = round((EPS_thisQ - EPS_last3Q) / np.abs(EPS_last3Q) * 100, 2) if EPS_thisQ != "N/A" and EPS_last3Q != "N/A" and EPS_last3Q != 0 else "N/A"
             
             # Get the ROE
-            ROE = round(df.loc[closest_date, "roe"], 2)
+            ROE_csv = round(df.loc[closest_date, "roe"], 2)
 
         else:
-            EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = None, None, None, None
+            EPS_past5Y_growth_csv = EPS_thisY_growth_csv = EPS_QoQ_growth_csv = ROE_csv = None
 
-    # Scrape the fundamentals data from Finviz if end date is later than recent earning date
-    else:
-        quote = Quote(ticker=stock)
-        fundamental_df = quote.fundamental_df.loc[:, columns].map(fundamentals_map)
-        data = fundamental_df.values[0]
-        EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = *data,
+    # Finalise values by combining scraped and CSV data
+    EPS_past5Y_growth = EPS_past5Y_growth if EPS_past5Y_growth != "N/A" else EPS_past5Y_growth_csv
+    EPS_thisY_growth = EPS_thisY_growth if EPS_thisY_growth != "N/A" else EPS_thisY_growth_csv
+    EPS_QoQ_growth = EPS_QoQ_growth if EPS_QoQ_growth != "N/A" else EPS_QoQ_growth_csv
+    ROE = ROE if ROE != "N/A" else ROE_csv
     
     return EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE
 
