@@ -23,16 +23,15 @@ from stock_screener import create_stock_dict
 from technicals import *
 from tqdm import tqdm
 
-def get_momentum_labels(momentum_params, knn_params):
+def get_momentum_labels(momentum_params):
     """
     Construct labels for the momentum strategy based on provided parameters.
 
     Parameters:
     - momentum_params (dict): Parameters for the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
 
     Returns:
-    - tuple: A tuple containing the labels for SMA, KNN, capitalization, and stop loss.
+    - tuple: A tuple containing the labels for SMA, capitalization, and stop loss.
     """
 
     # Extract parameters from the momentum strategy
@@ -42,20 +41,14 @@ def get_momentum_labels(momentum_params, knn_params):
     cap_threshold = momentum_params["cap_threshold"]
     stoploss_threshold = momentum_params["stoploss_threshold"]
 
-    # Extract KNN parameters
-    if knn_params is not None:
-        k = knn_params["k"]
-        lookback = knn_params["lookback"]
-
     # Construct the labels
     sma_label = f"sma{period_short}x{period_long}" if sma_crossover else ""
-    knn_label = f"k{k}lb{lookback}" if knn_params is not None else ""
     cap_label = f"cap{cap_threshold}" if cap_threshold else ""
     sl_label = f"sl{stoploss_threshold * 100:.2f}" if stoploss_threshold else ""
 
-    return sma_label, knn_label, cap_label, sl_label
+    return sma_label, cap_label, sl_label
 
-def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=None, reanalyse=False):
+def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse=False):
     """
     Calculates the equity curve of a momentum strategy.
 
@@ -67,12 +60,10 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors (list): Factor combination of the strategy.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
 
     Returns:
     - index_df (DataFrame): Contains the equity curve.
-    - Optional: Confusion matrices for KNN model if "knn_params" is provided.
     """
 
     # Extract parameters from the momentum strategy
@@ -93,15 +84,14 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     result_folder = "Backtest"
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     # Define the filename for saving the index DataFrame
     eqcurve_folder = os.path.join(result_folder, "Equity curve")
-
-    filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.csv")
+    filename = os.path.join(eqcurve_folder, f"{infix}eqcurve{factors}years7itv{interval}top{top}{sma_label}{cap_label}{sl_label}.csv")
 
     # Save the index DataFrame
-    if not os.path.isfile(filename) or reanalyse or knn_params:
+    if not os.path.isfile(filename) or reanalyse:
         # Define the folder containing stock dictionaries
         stock_dict_folder = os.path.join(result_folder, "Stock dict")
 
@@ -129,27 +119,6 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                 index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
                 index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
 
-        # Apply KNN model if parameters are provided
-        if knn_params is not None:
-            # Import KNN-related functions
-            from knn_model import knn_accuracy, preprocess_knn
-
-            # Extract KNN parameters
-            k = knn_params["k"]
-            lookback = knn_params["lookback"]
-            features = knn_params["features"]
-
-            # Preprocess data for the KNN model
-            X_train_index, Y_train_index, X_test_index, Y_test_index, df_test_index = preprocess_knn(index_df, end_dates[0], end_dates[-1], lookback, features)
-
-            # Train and evaluate the KNN model
-            accuracy_train_knn_index, accuracy_test_knn_index, cm_train_knn_index, cm_test_knn_index, X_train_knn_index, X_test_knn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k)
-            accuracy_train_lknn_index, accuracy_test_lknn_index, cm_train_lknn_index, cm_test_lknn_index, X_train_lknn_index, X_test_lknn_index = knn_accuracy(X_train_index, Y_train_index, X_test_index, Y_test_index, k, lorentzian=True)
-
-            # Store KNN signals in the index DataFrame
-            index_df.loc[end_dates[0] : end_dates[-1], f"Index KNN Signal"] = X_test_knn_index
-            index_df.loc[end_dates[0] : end_dates[-1], f"Index LKNN Signal"] = X_test_lknn_index
-
         # Filter index data to the backtesting period
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
@@ -158,13 +127,18 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         index_df.fillna({"Percent Change": 0}, inplace=True)
         index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
-        # Extract the list of stocks for each backtesting period
+        # Extract the list of stocks for each interval
         stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
 
-        # Iterate over all backtesting periods
+        # Initialise a dictionary to track stop loss statuses for each stock during backtesting
+        stoploss_prev = {}
+
+        # Iterate over all intervals
         for i in tqdm(range(len(end_dates) - 1)):
             start_date, end_date = end_dates[i], end_dates[i + 1]
+            stocks_prev = stocks_list[i - 1] if i > 0 else None
             stocks = stocks_list[i]
+            stocks_next = stocks_list[i + 1] if i < len(end_dates) - 2 else None
 
             # Determine if short SMA is above long SMA or if SMA crossover is disabled
             if sma_crossover:
@@ -180,17 +154,23 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                     # Get the price data of the stock
                     df = get_df(stock, current_date)
                     
-                    # Check if the dataframe is empty
+                    # Check if the DataFrame is empty
                     if df is None or df.empty:
                         continue
                         
                     try:
-                        # Filter the price data of the stock
-                        df = df[start_date : end_date]
+                        # Filter price data of the stock to the backtesting period
+                        df = df[end_dates[0] : end_dates[-1]]
 
                         # Calculate the percentage change of the stock
                         df.loc[:, "Percent Change"] = df["Close"].pct_change()
-                        df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
+                        if stocks_prev is None or not stock in stocks_prev or stoploss_prev.get(f"f{stock} {i - 1}", False):
+                            # Buy the stock at the start date
+                            df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
+
+                        # Filter the price data of the stock to the interval
+                        df = df[start_date : end_date]
+                        df.fillna({"Percent Change": 0}, inplace=True)
 
                         # Calculate the cumulative return of the stock
                         df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
@@ -212,17 +192,25 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                                     sell_date = idx
                                     df.loc[idx, "Percent Change"] = ((1 - fee_rate) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
                             
-                            # If no stop loss, assign the end_date as sell_date
+                            # If no stop loss, assign the end date as sell date
                             if sell_date is None:
                                 sell_date = end_date
-                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
-
-                            # Calculate the cumulative return of the stock again
-                            df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+                                if stocks_next is None or not stock in stocks_next:
+                                    # Sell the stock at the sell date
+                                    df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+                            
+                            # Record the stop loss status of the stock
+                            if sell_date != end_date:
+                                stoploss_prev[f"{stock} {i}"] = True
                         
                         else:
                             sell_date = end_date
-                            df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+                            if stocks_next is None or not stock in stocks_next:
+                                # Sell the stock at the sell date
+                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+
+                        # Calculate the cumulative return of the stock again
+                        df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
 
                         # Store results in the index DataFrame
                         index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
@@ -251,16 +239,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             index_df["Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"])
         index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
-        # Calculate cumulative returns for KNN signals
-        if knn_params is not None:
-            index_df["KNN Stock Percent Change"] = 0
-            index_df["LKNN Stock Percent Change"] = 0
-
-            for i in range(top):
-                index_df["KNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index KNN Signal"].shift(1)
-                index_df["LKNN Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"]) * index_df["Index LKNN Signal"].shift(1)
-            index_df["Cumulative KNN Stock Return"] = (index_df["KNN Stock Percent Change"] + 1).cumprod()
-            index_df["Cumulative LKNN Stock Return"] = (index_df["LKNN Stock Percent Change"] + 1).cumprod()
+        # Save the index DataFrame to a CSV file
         index_df.to_csv(filename)
         print(f"Equity curve {filename} saved.")
     else:
@@ -272,11 +251,6 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
             end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]
             index_df = index_df[index_df.index >= end_dates[0]]
-        
-
-    # Return results, including confusion matrices if KNN parameters are provided
-    if knn_params is not None:
-        return index_df, cm_test_knn_index, cm_test_lknn_index
     
     return index_df
 
@@ -293,7 +267,6 @@ def partial_momentum_equity_curve(args):
         - NASDAQ_all (bool): If True, include all stocks of NASDAQ.
         - factors (list): Factors to consider in the strategy.
         - momentum_params (dict): Parameters for backtesting the momentum strategy.
-        - knn_params (dict, optional): Parameters for the KNN model. Defaults to None.
         - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
         
 
@@ -304,15 +277,15 @@ def partial_momentum_equity_curve(args):
     """
 
     # Unpack the arguments from the tuple
-    end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params, reanalyse = args
+    end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse = args
 
     # Calculate the equity curve using the main momentum function
-    index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params, reanalyse=reanalyse)
+    index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse=reanalyse)
 
     # Return the factors and relevant columns from the index DataFrame
     return tuple(factors), index_df.loc[:, ["Close", "Stock Percent Change", "Cumulative Stock Return"]]
 
-def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, recreate_dict=False, reanalyse=False, speedup=True):
+def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, recreate_dict=False, reanalyse=False, speedup=True):
     """
     Create a dictionary to store the returns of all factor combinations for the momentum strategy.
 
@@ -324,7 +297,6 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - recreate_dict (bool): If True, recreate the dictionary even if it already exists. Default to False.
     - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
     - speedup (bool, optional): If True, use multiprocessing to speed up the process. Default to True.
@@ -345,17 +317,17 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     result_folder = "Backtest"
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     # Define the filename for saving the momentum dictionary
     momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
-    filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
+    filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.pkl")
 
     # Check if the file exists and whether to recreate it
     if not os.path.isfile(filename) or recreate_dict:
         if speedup:
             # Prepare arguments for processing each factor combination in parallel
-            args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params, reanalyse) for factors in factors_group]
+            args_list = [(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse) for factors in factors_group]
 
             # Create a pool of worker processes to fetch the equity curves
             with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -371,7 +343,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
             # Iterate over all factor combinations
             for factors in tqdm(factors_group):
                 # Get the equity curve for the current combination of factors
-                factor_index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params, reanalyse=reanalyse)
+                factor_index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse=reanalyse)
 
                 # Convert the list of factors to a tuple for the dictionary key
                 factors_tuple = tuple(factors)
@@ -387,7 +359,7 @@ def create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ
     else:
         print("Dictionary of the momentum strategy saved before.")
 
-def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=None, plot_group=False, save=False):
+def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, plot_group=False, save=False):
     """
     Plot the equity curve of stocks for the momentum strategy.
 
@@ -399,7 +371,6 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     - factors (list): Factor combination of the strategy.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for backtesting the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - plot_group (bool): If True, plot equity curves for all factor combinations. Default to False.
     - save (bool): If True, save the plot as a file. Default to False.
 
@@ -424,7 +395,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     if not plot_group:
         # Create a figure for the single plot
@@ -453,7 +424,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         # Save the plot
         if save:
             figure_folder = os.path.join(result_folder, "Figure")
-            filename = os.path.join(figure_folder, f"{infix}eqcurve{factors}{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png")
+            filename = os.path.join(figure_folder, f"{infix}eqcurve{factors}{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.png")
             plt.savefig(filename, dpi=300)
         
         # Show the plot
@@ -462,7 +433,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     else:
         # Load the momentum dictionary if it exists
         momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
-        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.pkl")
+        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{cap_label}.pkl")
         if os.path.isfile(momentum_dict_filename):
             with open(momentum_dict_filename, "rb") as file:
                 momentum_dict = pickle.load(file)
@@ -513,7 +484,7 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
         # Save the plot
         if save:
             figure_folder = os.path.join(result_folder, "Figure")
-            filename = os.path.join(figure_folder, f"{infix}eqcurveallyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.png")
+            filename = os.path.join(figure_folder, f"{infix}eqcurveallyears{years}itv{interval}top{top}{sma_label}{cap_label}.png")
             plt.savefig(filename, dpi=300)
 
         # Show the plot
@@ -552,13 +523,13 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
 
         # Save the plot
         if save:
-            filename_mean = os.path.join(figure_folder, f"{infix}eqcurvemeanyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}.png")
+            filename_mean = os.path.join(figure_folder, f"{infix}eqcurvemeanyears{years}itv{interval}top{top}{sma_label}{cap_label}.png")
             plt.savefig(filename_mean, dpi=300)
 
         # Show the plot
         plt.show()
 
-def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_values, y_values, z_values, z_index, z_label, knn_params=None, regression_model="RandomForest", save=False):
+def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_values, y_values, z_values, z_index, z_label, regression_model="RandomForest", save=False):
     """
     Plot a 3D comparison between an index and stocks based on selected metrics.
 
@@ -572,7 +543,6 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     - z_values (array-like): Values for the z-axis.
     - z_index (array-like): Index values for the z-axis.
     - z_label (str): Label for the z-axis.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
     - save (bool): If True, save the plot as a file. Default to False.
 
@@ -592,7 +562,7 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     result_folder = "Backtest"
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     # Create a 3D figure
     fig = plt.figure(figsize=(8, 6))
@@ -676,13 +646,13 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     # Save the plot
     if save:
         figure_folder = os.path.join(result_folder, "Figure")
-        filename = os.path.join(figure_folder, f"{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.png")
+        filename = os.path.join(figure_folder, f"{infix}{z_label.replace(' ', '')}cfyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.png")
         plt.savefig(filename, dpi=300)
 
     # Show the plot
     plt.show()
 
-def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=None, reanalyse=False):
+def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, reanalyse=False):
     """
     Save the statistics of all factor combinations of the momentum strategy.
 
@@ -692,7 +662,6 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
 
     Returns:
@@ -711,11 +680,11 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     result_folder = "Backtest"
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     # Define the filename for saving the statistics
     factors_stats_folder = os.path.join(result_folder, "Factors stats")
-    filename = os.path.join(factors_stats_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy")
+    filename = os.path.join(factors_stats_folder, f"{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.npy")
 
     # Check if pre-existing data exists or if reanalysis is required
     if not os.path.isfile(filename) or reanalyse:
@@ -724,7 +693,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
 
         # Define the filename for the momentum dictionary
         momentum_dict_folder = os.path.join(result_folder, "Momentum dict")
-        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.pkl")
+        momentum_dict_filename = os.path.join(momentum_dict_folder, f"{infix}momentum_dictyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.pkl")
 
         # Load the momentum dictionary from file
         with open(momentum_dict_filename, "rb") as file:
@@ -751,7 +720,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     else:
         print("Statistics of the momentum strategy saved before.")
 
-def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, knn_params=None, regression_model="RandomForest", save=False):
+def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, regression_model="RandomForest", save=False):
     """
     Compare the statistics between the index and stocks selected by the momentum strategy.
 
@@ -762,7 +731,6 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors_stats (list): Statistics of the momentum strategy.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - knn_params (dict, optional): Parameters for the KNN model. Default to None.
     - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
     - save (bool): If True, save the comparison plots.
     
@@ -819,9 +787,9 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     print(f"Proportion of screened stocks' Sortino ratio higher than {index_dict[index_name]}: {round(sortino_higher * 100, 2)}%.")
     
     # Generate and save plots for comparisons
-    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, cagr_values, cagr_index * 100, "CAGR", knn_params=knn_params, regression_model=regression_model, save=save)
-    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, sharpe_ratio_values, sharpe_ratio_index, "Sharpe ratio", knn_params=knn_params, regression_model=regression_model, save=save)
-    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, sortino_ratio_values, sortino_ratio_index, "Sortino ratio", knn_params=knn_params, regression_model=regression_model, save=save)
+    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, cagr_values, cagr_index * 100, "CAGR", regression_model=regression_model, save=save)
+    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, sharpe_ratio_values, sharpe_ratio_index, "Sharpe ratio", regression_model=regression_model, save=save)
+    plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, xs, ys, sortino_ratio_values, sortino_ratio_index, "Sortino ratio", regression_model=regression_model, save=save)
 
 def get_equity(month_inv, years, returns, initial=10000, inflation=0.03):
     """
@@ -1311,12 +1279,9 @@ def main():
                        "sma_crossover": False, 
                        "leverage": 1, 
                        "fee_rate": 0.001}
-    
-    # Parameters of the KNN model
-    knn_params = None
 
     # Get the labels of the momentum strategy
-    sma_label, knn_label, cap_label, sl_label = get_momentum_labels(momentum_params, knn_params)
+    sma_label, cap_label, sl_label = get_momentum_labels(momentum_params)
 
     # Create the end dates
     end_dates = generate_end_dates(7, current_date, interval=interval)
@@ -1334,43 +1299,46 @@ def main():
         create_stock_dict(end_dates, index_name, index_dict, NASDAQ_all, factors, cap_threshold=cap_threshold, backtest=backtest)
     
     # Create a dictionary to store the returns of all factor combinations for the momentum strategy
-    create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
     # Save the statistics of all factor combinations of the momentum strategy
-    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, knn_params=knn_params)
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
-    plot_momentum_equity_curve_single = True
+    plot_momentum_equity_curve_single = False
     if plot_momentum_equity_curve_single:
         # Plot the equity curve of stocks of the momentum strategy for one factor combination
         factors = [0.05, 0.8, 0.15]
-        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, knn_params=knn_params)
+        index_df = momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params)
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[0])
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
-        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params, knn_params=knn_params)
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
     
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
+        # Get the price data of the index
         index_df = get_df(index_name, current_date)
+
         # Filter index data to the backtesting period
         index_df = index_df[end_dates[0] : end_dates[-1]]
+
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
-        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, knn_params=knn_params, plot_group=True, save=True)
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, plot_group=True, save=True)
     
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
-        factors_stats = np.load(f"Backtest/Factors stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{knn_label}{cap_label}{sl_label}.npy", allow_pickle=True)
+        factors_stats = np.load(f"Backtest/Factors stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.npy", allow_pickle=True)
 
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
 
-        # Filter the data
+        # Filter the data to the backtesting period
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
         # Compare the statistics between the index and stocks selected by the momentum strategy
         print(calculate_stats(index_df, len(index_df) / 252)[0])
         print(calculate_stats(index_df, len(index_df) / 252)[1])
-        compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, knn_params=knn_params, save=True)
+        compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors_stats, momentum_params, save=True)
     
     index_corr_ta = False
     if index_corr_ta:
