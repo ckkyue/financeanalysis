@@ -48,7 +48,7 @@ def get_momentum_labels(momentum_params):
 
     return sma_label, cap_label, sl_label
 
-def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse=False):
+def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors, momentum_params, reanalyse=False, save=True):
     """
     Calculates the equity curve of a momentum strategy.
 
@@ -61,6 +61,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     - factors (list): Factor combination of the strategy.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
     - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
+    - save (bool, optional): If True, save the index DataFrame as a file. Default to True.
 
     Returns:
     - index_df (DataFrame): Contains the equity curve.
@@ -128,8 +129,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
         # Extract the list of stocks for each interval
-        stocks_list = [stock_dict[end_date] for end_date in end_dates[:-1]]
-
+        stocks_list = [stock_dict[max(date for date in stock_dict.keys() if date <= end_date)] for end_date in end_dates[:-1]]
+        
         # Initialise a dictionary to track stop loss statuses for each stock during backtesting
         stoploss_prev = {}
 
@@ -240,8 +241,9 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
         # Save the index DataFrame to a CSV file
-        index_df.to_csv(filename)
-        print(f"Equity curve {filename} saved.")
+        if save:
+            index_df.to_csv(filename)
+            print(f"Equity curve {filename} saved.")
     else:
         print(f"Equity curve {filename} saved before.")
         index_df = pd.read_csv(filename)
@@ -371,8 +373,8 @@ def plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, fac
     - factors (list): Factor combination of the strategy.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for backtesting the momentum strategy.
-    - plot_group (bool): If True, plot equity curves for all factor combinations. Default to False.
-    - save (bool): If True, save the plot as a file. Default to False.
+    - plot_group (bool, optional): If True, plot equity curves for all factor combinations. Default to False.
+    - save (bool, optional): If True, save the plot as a file. Default to False.
 
     Returns:
     - None: This function generates and displays a plot of the equity curve.
@@ -543,8 +545,8 @@ def plot_comparison(index_name, index_dict, NASDAQ_all, momentum_params, x_value
     - z_values (array-like): Values for the z-axis.
     - z_index (array-like): Index values for the z-axis.
     - z_label (str): Label for the z-axis.
-    - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
-    - save (bool): If True, save the plot as a file. Default to False.
+    - regression_model (str, optional): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
+    - save (bool, optional): If True, save the plot as a file. Default to False.
 
     Returns:
     - None: This function creates a 3D plot.
@@ -662,7 +664,7 @@ def save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momen
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors_group (list): List of factor combinations to evaluate.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - reanalyse (bool): If True, reanalyse and overwrite existing data. Default to False.
+    - reanalyse (bool, optional): If True, reanalyse and overwrite existing data. Default to False.
 
     Returns:
     - None: This function saves the statistics as a .npy file.
@@ -731,8 +733,8 @@ def compare_index_momentum(index_df, index_name, index_dict, NASDAQ_all, factors
     - NASDAQ_all (bool): If True, include all stocks in NASDAQ.
     - factors_stats (list): Statistics of the momentum strategy.
     - momentum_params (dict): Parameters for the backtesting of the momentum strategy.
-    - regression_model (str): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
-    - save (bool): If True, save the comparison plots.
+    - regression_model (str, optional): The regression model to use ("LinearRegression", "RandomForest", "SVM"). Default to "RandomForest".
+    - save (bool, optional): If True, save the comparison plots. Default to False.
     
     Returns:
     - None: This function prints comparison statistics and generates plots.
@@ -799,8 +801,8 @@ def get_equity(month_inv, years, returns, initial=10000, inflation=0.03):
     - month_inv (float): Monthly investment amount.
     - years (int): Number of years to calculate equity for.
     - returns (array-like): Array of monthly returns.
-    - initial (float): Initial equity amount. Default is 10000.
-    - inflation (float): Annual inflation rate. Default is 0.03.
+    - initial (float, optional): Initial equity amount. Default is 10000.
+    - inflation (float, optional): Annual inflation rate. Default is 0.03.
 
     Returns:
     - equity_arr (np.ndarray): Array of equity values over the specified period.
@@ -954,8 +956,8 @@ def calculate_stats(df, years, name=None, risk_free_rate=0.03):
     Parameters:
     - df (DataFrame): DataFrame with a "Close" column.
     - years (int): Number of years for CAGR and other metrics.
-    - name (str): Name of the strategy. Default is None.
-    - risk_free_rate (float): Risk-free return rate. Default to 3%.
+    - name (str, optional): Name of the strategy. Default is None.
+    - risk_free_rate (float, optional): Risk-free return rate. Default to 3%.
 
     Returns:
     - tuple: (yearly returns, stats array)
@@ -1030,7 +1032,7 @@ def plot_strategy_equity_curve(stock, df, col="Cumulative Strategy Return"):
     Parameters:
     - stock (str): Name of the stock being analysed.
     - df (DataFrame): DataFrame containing strategy returns and buy/sell signals.
-    - col (str): Column name of the cumulative strategy return. Default is "Cumulative Strategy Return".
+    - col (str, optional): Column name of the cumulative strategy return. Default is "Cumulative Strategy Return".
 
     Returns:
     - None: This function plots an equity curve.
@@ -1073,9 +1075,9 @@ def SMA_strategy(df, period_buy=200, period_sell=200, col="Close"):
 
     Parameters:
     - df (DataFrame): DataFrame containing price data.
-    - period_buy (int): Period for SMA calculation used to generate buy signals. Default is 200.
-    - period_sell (int): Period for SMA calculation used to generate sell signals. Default is 200.
-    - col (str): Column name for price data. Default is "Close".
+    - period_buy (int, optional): Period for SMA calculation used to generate buy signals. Default is 200.
+    - period_sell (int, optional): Period for SMA calculation used to generate sell signals. Default is 200.
+    - col (str, optional): Column name for price data. Default is "Close".
 
     Returns:
     - df (DataFrame): Modified DataFrame with "Buy" and "Sell" signals.
@@ -1129,10 +1131,10 @@ def RSI_strategy(df, period=14, col="Close", oversold=30, overbought=70):
 
     Parameters:
     - df (DataFrame): DataFrame containing price data.
-    - period (int): Look-back period for RSI calculation. Default is 14.
-    - col (str): Column name for price data. Default is "Close".
-    - oversold (float): RSI level indicating oversold conditions. Default is 30.
-    - overbought (float): RSI level indicating overbought conditions. Default is 70.
+    - period (int, optional): Look-back period for RSI calculation. Default is 14.
+    - col (str, optional): Column name for price data. Default is "Close".
+    - oversold (float, optional): RSI level indicating oversold conditions. Default is 30.
+    - overbought (float, optional): RSI level indicating overbought conditions. Default is 70.
 
     Returns:
     - df (DataFrame): Modified DataFrame with "Buy" and "Sell" signals.
@@ -1188,7 +1190,7 @@ def test_strategy(stock, df, end_date, years, fee_rate=0.001):
     - df (DataFrame): DataFrame containing price data.
     - end_date (str): The end date for strategy testing in "YYYY-MM-DD" format.
     - years (int): Number of years to test the strategy.
-    - fee_rate (float): Transaction fee rate. Default is 0.001.
+    - fee_rate (float, optional): Transaction fee rate. Default is 0.001.
 
     Returns:
     - None: This function performs calculations and plots an equity curve.
@@ -1302,7 +1304,7 @@ def main():
     create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
     # Save the statistics of all factor combinations of the momentum strategy
-    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, reanalyse=True)
 
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:

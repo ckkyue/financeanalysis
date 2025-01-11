@@ -1582,9 +1582,9 @@ def plot_hist(arr, xlabel, title, benchmark=None, filename=None, save=False, bac
 
     # Add mean and kurtosis to the plot
     if benchmark is not None:
-        text = f"Mean: {mean:.4f}\nSkew: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}\nBenchmark: {benchmark:.4f}"
+        text = f"Mean: {mean:.4f}\nSkewness: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}\nBenchmark: {benchmark:.4f}"
     else:
-        text = f"Mean: {mean:.4f}\nSkew: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}"
+        text = f"Mean: {mean:.4f}\nSkewness: {skew_value:.2f}\nKurtosis: {kurt_value:.2f}"
         
     plt.text(0.975, 0.975, text, ha="right", va="top", transform=plt.gca().transAxes, bbox={"facecolor": "white", "alpha": 0.8, "pad": 5})
 
