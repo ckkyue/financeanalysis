@@ -1299,7 +1299,7 @@ def main():
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
     
-    plot_momentum_equity_curve_all = False
+    plot_momentum_equity_curve_all = True
     if plot_momentum_equity_curve_all:
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
@@ -1308,7 +1308,7 @@ def main():
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
-        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, plot_group=True, save=True)
+        plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, plot_group=True)
     
     show_momentum_stats = False
     if show_momentum_stats:
