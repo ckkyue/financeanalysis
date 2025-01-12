@@ -676,10 +676,9 @@ def main():
     # Define the paths for the folders
     folders = ["Price data", "Result", "Result/Figure", "Backtest"]
     
-    # Check if the folders exist, create them if they do not
+    # Create folders if they do not exist
     for folder in folders:
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        os.makedirs(folder, exist_ok=True)
     
     # Variables
     HKEX_all = True
