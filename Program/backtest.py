@@ -129,7 +129,8 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
         # Extract the list of stocks for each interval
-        stocks_list = [stock_dict[max(date for date in stock_dict.keys() if date <= end_date)] for end_date in end_dates[:-1]]
+        stocks_dates = stock_dict.keys()
+        stocks_list = [stock_dict[max(date for date in stocks_dates if date <= end_date)] for end_date in end_dates[:-1]]
         
         # Initialise a dictionary to track stop loss statuses for each stock during backtesting
         stoploss_prev = {}
@@ -963,7 +964,7 @@ def calculate_stats(df, years, name=None, risk_free_rate=0.03):
     - tuple: (yearly returns, stats array)
     """
 
-    # Filter the data to the last 'years' worth of trading days (assuming 252 trading days per year)
+    # Filter the data to the last "years" worth of trading days (assuming 252 trading days per year)
     df = df.tail(int(years * 252))
 
     # Capitalise name for consistency
@@ -1304,7 +1305,7 @@ def main():
     create_momentum_dict(end_dates, current_date, index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
     # Save the statistics of all factor combinations of the momentum strategy
-    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params, reanalyse=True)
+    save_momentum_stats(index_name, index_dict, NASDAQ_all, factors_group, momentum_params)
 
     plot_momentum_equity_curve_single = True
     if plot_momentum_equity_curve_single:
@@ -1315,7 +1316,7 @@ def main():
         print(calculate_stats(index_df, len(index_df) / 252, "stock")[1])
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, factors, factors_group, momentum_params)
     
-    plot_momentum_equity_curve_all = True
+    plot_momentum_equity_curve_all = False
     if plot_momentum_equity_curve_all:
         # Get the price data of the index
         index_df = get_df(index_name, current_date)
@@ -1326,7 +1327,7 @@ def main():
         # Plot the equity curve of stocks of the momentum strategy for all factor combinations
         plot_momentum_equity_curve(index_df, index_name, index_dict, NASDAQ_all, None, factors_group, momentum_params, plot_group=True, save=True)
     
-    show_momentum_stats = True
+    show_momentum_stats = False
     if show_momentum_stats:
         # Load the statistics of all factor combinations
         factors_stats = np.load(f"Backtest/Factors stats/{infix}factors_statsyears{years}itv{interval}top{top}{sma_label}{cap_label}{sl_label}.npy", allow_pickle=True)
