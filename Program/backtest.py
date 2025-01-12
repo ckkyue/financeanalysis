@@ -68,15 +68,9 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
     """
 
     # Extract parameters from the momentum strategy
-    years = momentum_params["years"]
-    interval = momentum_params["interval"]
-    top = momentum_params["top"]
-    sma_crossover = momentum_params["sma_crossover"]
-    period_short = momentum_params["period_short"]
-    period_long = momentum_params["period_long"]
-    stoploss_threshold = momentum_params["stoploss_threshold"]
-    fee_rate = momentum_params["fee_rate"]
-    leverage = momentum_params["leverage"]
+    years, interval, top = momentum_params["years"], momentum_params["interval"], momentum_params["top"]
+    sma_crossover, period_short, period_long = momentum_params["sma_crossover"], momentum_params["period_short"], momentum_params["period_long"]
+    stoploss_threshold, fee_rate, leverage = momentum_params["stoploss_threshold"], momentum_params["fee_rate"], momentum_params["leverage"]
 
     # Get the infix for file naming
     infix = get_infix(index_name, index_dict, NASDAQ_all)
@@ -117,15 +111,14 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
         # Calculate moving averages if required
         if sma_crossover:
             for i in [period_short, period_long]:
-                index_df.loc[:, f"SMA {str(i)}"] = SMA(index_df, i)
-                index_df.loc[:, f"EMA {str(i)}"] = EMA(index_df, i)
+                index_df[f"SMA {i}"] = SMA(index_df, i)
+                index_df[f"EMA {i}"] = EMA(index_df, i)
 
         # Filter index data to the backtesting period
         index_df = index_df[end_dates[0] : end_dates[-1]]
 
         # Calculate percent change and cumulative return for the index
-        index_df["Percent Change"] = index_df["Close"].pct_change()
-        index_df.fillna({"Percent Change": 0}, inplace=True)
+        index_df["Percent Change"] = index_df["Close"].pct_change().fillna(0)
         index_df["Cumulative Return"] = (index_df["Percent Change"] + 1).cumprod()
 
         # Extract the list of stocks for each interval
@@ -143,10 +136,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             stocks_next = stocks_list[i + 1] if i < len(end_dates) - 2 else None
 
             # Determine if short SMA is above long SMA or if SMA crossover is disabled
-            if sma_crossover:
-                sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"]
-            else:
-                sma_cond = True
+            sma_cond = index_df.loc[start_date, f"SMA {period_short}"] > index_df.loc[start_date, f"SMA {period_long}"] if sma_crossover else True
             factor = 1 if sma_cond else 0
 
             if stocks is not None:
@@ -165,14 +155,13 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                         df = df[end_dates[0] : end_dates[-1]]
 
                         # Calculate the percentage change of the stock
-                        df.loc[:, "Percent Change"] = df["Close"].pct_change()
-                        if stocks_prev is None or not stock in stocks_prev or stoploss_prev.get(f"f{stock} {i - 1}", False):
+                        df["Percent Change"] = df["Close"].pct_change()
+                        if stocks_prev is None or stock not in stocks_prev or stoploss_prev.get(f"f{stock} {i - 1}", False):
                             # Buy the stock at the start date
                             df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * df.loc[start_date, "Open"])
 
                         # Filter the price data of the stock to the interval
-                        df = df[start_date : end_date]
-                        df.fillna({"Percent Change": 0}, inplace=True)
+                        df = df[start_date : end_date].fillna({"Percent Change": 0})
 
                         # Calculate the cumulative return of the stock
                         df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
@@ -197,7 +186,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                             # If no stop loss, assign the end date as sell date
                             if sell_date is None:
                                 sell_date = end_date
-                                if stocks_next is None or not stock in stocks_next:
+                                if stocks_next is None or stock not in stocks_next:
                                     # Sell the stock at the sell date
                                     df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
                             
@@ -207,7 +196,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                         
                         else:
                             sell_date = end_date
-                            if stocks_next is None or not stock in stocks_next:
+                            if stocks_next is None or stock not in stocks_next:
                                 # Sell the stock at the sell date
                                 df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
 
@@ -215,11 +204,11 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                         df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
 
                         # Store results in the index DataFrame
-                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)}"] = stock
-                        index_df.loc[start_date : sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = df["Percent Change"]
-                        index_df.loc[sell_date, f"Buy Stock {str(j + 1)} Percent Change"] = 0
-                        index_df.loc[sell_date, f"Sell Stock {str(j + 1)} Percent Change"] = df.loc[sell_date, "Percent Change"]
-                        index_df.loc[start_date : end_date, f"Stock {str(j + 1)} Cumulative Return"] = df["Cumulative Return"]
+                        index_df.loc[start_date : end_date, f"Stock {j + 1}"] = stock
+                        index_df.loc[start_date : sell_date, f"Buy Stock {j + 1} Percent Change"] = df["Percent Change"]
+                        index_df.loc[sell_date, f"Buy Stock {j + 1} Percent Change"] = 0
+                        index_df.loc[sell_date, f"Sell Stock {j + 1} Percent Change"] = df.loc[sell_date, "Percent Change"]
+                        index_df.loc[start_date : end_date, f"Stock {j + 1} Cumulative Return"] = df["Cumulative Return"]
 
                     except Exception as e:
                         print(f"Error calculating returns for {stock}: {e}.")
@@ -234,11 +223,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
                             index_df.loc[start_date : end_date, col] *= factor / top
                 
         # Calculate overall stock percent change and cumulative return
-        index_df["Stock Percent Change"] = 0
-        for i in range(top):
-            index_df.fillna({f"Buy Stock {i + 1} Percent Change": 0}, inplace=True)
-            index_df.fillna({f"Sell Stock {i + 1} Percent Change": 0}, inplace=True)
-            index_df["Stock Percent Change"] += leverage * (index_df[f"Buy Stock {i + 1} Percent Change"] + index_df[f"Sell Stock {i + 1} Percent Change"])
+        index_df["Stock Percent Change"] = sum(index_df[f"Buy Stock {i + 1} Percent Change"].fillna(0) + index_df[f"Sell Stock {i + 1} Percent Change"].fillna(0) for i in range(top)) * leverage
         index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
         # Save the index DataFrame to a CSV file
@@ -247,9 +232,7 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, NASDA
             print(f"Equity curve {filename} saved.")
     else:
         print(f"Equity curve {filename} saved before.")
-        index_df = pd.read_csv(filename)
-        index_df["Date"] = pd.to_datetime(index_df["Date"])
-        index_df.set_index("Date", inplace=True)
+        index_df = pd.read_csv(filename, parse_dates=["Date"], index_col="Date")
         if years < 7:
             cutoff_date = generate_end_dates(years, current_date, interval=interval)[0]
             end_dates = [end_date for end_date in end_dates if end_date >= cutoff_date]

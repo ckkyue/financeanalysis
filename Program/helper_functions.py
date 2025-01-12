@@ -76,9 +76,9 @@ def generate_end_dates(years, current_date, interval="1m", index_name="^GSPC"):
     Parameters:
     - years (int): The number of years to look back from the current date.
     - current_date (str): The current date in "YYYY-MM-DD" format.
-    - interval (str): The duration for generating end dates in the format '<number><unit>'.
-                      Units can be 'w' (weeks), 'm' (months), or 'y' (years). Default is '1m'.
-    - index_name (str): The name of the index for which to fetch price data. Default is '^GSPC'.
+    - interval (str): The duration for generating end dates in the format "<number><unit>".
+                      Units can be "w" (weeks), "m" (months), or "y" (years). Default is "1m".
+    - index_name (str): The name of the index for which to fetch price data. Default is "^GSPC".
 
     Returns:
     - list: A list of end dates as strings in "YYYY-MM-DD" format, or None if an error occurs.
