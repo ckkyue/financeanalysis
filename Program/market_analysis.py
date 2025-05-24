@@ -266,7 +266,7 @@ def main():
         screen_excel(excel_filename, us_sector_excel_classification)
 
     # Screen HK stocks and apply Excel formatting
-    screen_hk = False
+    screen_hk = True
     if screen_hk:
         # Plot selected HK sector/industry charts
         plot_sector_industry_selected(current_date, "^HSI", index_dict, RS=80, all_stocks=all_stocks, save=True)
