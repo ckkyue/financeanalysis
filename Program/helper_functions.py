@@ -611,11 +611,14 @@ def stock_market(end_date, current_date, index_name, all_stocks, bloomberg=False
         sp500_df.set_index("date", inplace=True)
 
         if end_date == current_date:
-            tickers_table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
-            tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers_table["Symbol"]]
-            tickers.sort()
-            sp500_df.loc[pd.to_datetime(current_date), "tickers"] = ",".join(tickers)
-            sp500_df.to_csv(sp500_hist_file)
+            try:
+                tickers_table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+                tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers_table["Symbol"]]
+                tickers.sort()
+                sp500_df.loc[pd.to_datetime(current_date), "tickers"] = ",".join(tickers)
+                sp500_df.to_csv(sp500_hist_file)
+            except Exception as e:
+                print(f"Warning: Could not update S&P 500 tickers from Wikipedia due to network error: {e}. Skipping update.")
 
         tickers = sp500_df[sp500_df.index <= end_date]["tickers"].iloc[-1].split(",")
         tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers]

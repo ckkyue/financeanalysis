@@ -275,6 +275,7 @@ def main():
         screen_excel(excel_filename, hk_sector_excel_classification)
 
     # Market breadth analysis and plots for S&P 500
+    current_date = modify_current_date(start, "^GSPC")
     sp500_df = get_df("^GSPC", current_date)
     tickers = stock_market(current_date, current_date, "^GSPC", False)
     sp500_df = market_breadth(current_date, sp500_df, tickers)
