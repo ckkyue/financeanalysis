@@ -103,12 +103,13 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
             ax1.scatter(df.index[df["FTD"]], df["Low"][df["FTD"]] * 0.98, marker="x", color="green", label="FTD")
             ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 0.98, marker="x", color="red", label="DD")
 
-        # Plot SMAs if requested
-        periods = [5, 20, 50, 200]
+        # Plot SMAs if requested, ensuring they are drawn below the candlesticks
+        periods = [5, 10, 20, 50, 200]
         sma_cols = [f"SMA {str(i)}" for i in periods]
+        sma_colors = ["orange", "deepskyblue", "plum", "blue", "gold"]
         if sma and all(col in df.columns for col in sma_cols):
-            for period, col in zip(periods, sma_cols):
-                ax1.plot(df.index, df[col], label=f"SMA {period}")
+            for period, col, color in zip(periods, sma_cols, sma_colors):
+                ax1.plot(df.index, df[col], label=f"SMA {period}", color=color, zorder=0.5)
     else:
         # Plot the closing prices
         ax1.plot(df.index, df["Close"])
