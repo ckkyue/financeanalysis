@@ -485,7 +485,7 @@ def get_excel_filename(end_date, index_name, index_dict, period, RS, all_stocks,
 
     return excel_filename
 
-def merge_stocks(stocks, dfs, end_date):
+def merge_stocks(stocks, dfs):
     """
     Merge the price data of multiple stocks into a single DataFrame.
 

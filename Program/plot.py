@@ -106,7 +106,7 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
         # Plot SMAs if requested, ensuring they are drawn below the candlesticks
         periods = [5, 10, 20, 50, 200]
         sma_cols = [f"SMA {str(i)}" for i in periods]
-        sma_colors = ["orange", "deepskyblue", "plum", "blue", "gold"]
+        sma_colors = ["orange", "deepskyblue", "plum", "dodgerblue", "gold"]
         if sma and all(col in df.columns for col in sma_cols):
             for period, col, color in zip(periods, sma_cols, sma_colors):
                 ax1.plot(df.index, df[col], label=f"SMA {period}", color=color, zorder=0.5)
@@ -1385,56 +1385,58 @@ def plot_corr_ta(stock, df, cols=["Open", "High", "Low", "Close", "Volume", "MAC
     # Show the plot
     plt.show()
 
-def plot_corr_stocks(stocks, dfs, end_date, years, save=False):
+def plot_corr_stocks(stocks, dfs, end_date=None, show=252, save=False):
     """
     Plot the correlation matrix of closing prices for a list of stocks over a specified period.
 
     Parameters:
     - stocks (list): A list of stock ticker symbols to analyse.
-    - dfs (list): A list of DataFrames containing stock price data.
-    - end_date (str): The end date for the price data in "YYYY-MM-DD" format.
-    - years (int): The number of years of data to consider for the correlation analysis.
+    - dfs (list): A list of DataFrames containing stock price data for each stock.
+    - end_date (str, optional): The end date for the analysis in 'YYYY-MM-DD' format. Default is None, which uses the latest available data.
+    - show (int, optional): The number of most recent data points to display. Default is 252.
     - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
 
     Returns:
     - None: This function generates a plot and displays it.
     """
 
-    # Define the result folder
+    # Define the result and figure folders
     result_folder = "Result"
-
-    # Define the folder for saving figures
     figure_folder = os.path.join(result_folder, "Figure")
 
-    # Get the price data of the specified stocks
-    df_merged = merge_stocks(stocks, dfs, end_date)
+    # If end_date is provided, filter the DataFrames to include only data up to that date
+    if end_date:
+        for i, stock in enumerate(stocks):
+            dfs[i] = dfs[i][dfs[i].index <= end_date]
+            
+    # Merge the DataFrames of the specified stocks into a single DataFrame
+    df_merged = merge_stocks(stocks, dfs)
 
-    # Filter the DataFrame to show only the most recent data points based on the specified number of years
-    df_merged = df_merged[- int(years * 252):]
+    # Filter the DataFrame to show only the most recent data points
+    df_merged = df_merged[-show:]
+
+    # Extract the closing prices for each stock as a list of arrays
     dfs_close = [df_merged[f"Close ({stock})"].values for stock in stocks]
 
-    # Extract the closing prices for each stock
+    # Stack the closing prices into a 2D NumPy array (stocks x time)
     data = np.array(dfs_close)
 
-    # Calculate the correlation matrix from the closing prices
+    # Calculate the correlation matrix for the closing prices
     correlation_matrix = np.corrcoef(data)
-    
+
     # Create a heatmap to visualize the correlation matrix
     tick_labels = stocks
     sns.heatmap(correlation_matrix, annot=True, fmt=".2f", xticklabels=tick_labels, yticklabels=tick_labels)
 
     # Set the title
-    if years == 1:
-        plt.title(f"Correlation matrix in the past {years} year")
-    else:
-        plt.title(f"Correlation matrix in the past {years} years")
+    plt.title(f"Correlation matrix of closing prices (last {show} days)")
 
     # Adjust the spacing
     plt.tight_layout()
 
-    # Save the plot
+    # Save the plot if requested
     if save:
-        filename = os.path.join(figure_folder, f"corr{years}{', '.join(stocks)}.png")
+        filename = os.path.join(figure_folder, f"corr_{show}d_{'_'.join(stocks)}.png")
         plt.savefig(filename, dpi=300)
 
     # Show the plot
