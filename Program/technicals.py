@@ -680,14 +680,16 @@ def MVP_VCP(data, period_MVP=15, period_VCP=10, contraction=0.05, period=60, col
     
     return data
 
-def FTD_DD(data, period=50, threshold=0.015, col="Close"):
+def FTD_DD(data, volume_period=50, ftd_threshold=0.015, dd_threshold=0.002, ftd_dd_period=20, col="Close"):
     """
     Check for Follow-Through Days (FTD) and Distribution Days (DD) in the given data.
 
     Parameters:
     - data (DataFrame): DataFrame containing stock data.
-    - period (int): The number of periods to calculate the rolling mean for volume. Default is 50.
-    - threshold (float): The percentage threshold for price movement. Default is 0.015 (1.5%).
+    - volume_period (int): The number of periods to calculate the rolling mean for volume. Default is 50.
+    - ftd_threshold (float): The percentage threshold for Follow-Through Days (FTD). Default is 0.015 (1.5%).
+    - dd_threshold (float): The percentage threshold for Distribution Days (DD). Default is 0.002 (0.2%).
+    - ftd_dd_period (int): The number of periods to consider for FTD and DD. Default is 20.
     - col (str): The column name to calculate FTD and DD on. Default is "Close".
 
     Returns:
@@ -695,18 +697,18 @@ def FTD_DD(data, period=50, threshold=0.015, col="Close"):
     """
 
     # Check FTD
-    data["FTD"] = (data[col] > (1 + threshold) * data[col].shift(1)) \
+    data["FTD"] = (data[col] > (1 + ftd_threshold) * data[col].shift(1)) \
         & (data["Volume"] > data["Volume"].shift(1)) \
-        & (data["Volume"] > data["Volume"].rolling(window=period).mean())
-    
+        & (data["Volume"] > data["Volume"].rolling(window=volume_period).mean())
+
     # Check DD
-    data["DD"] = (data[col] < (1 - threshold) * data[col].shift(1)) \
+    data["DD"] = (data[col] < (1 - dd_threshold) * data[col].shift(1)) \
     & (data["Volume"] > data["Volume"].shift(1)) \
-    & (data["Volume"] > data["Volume"].rolling(window=period).mean())
+    & (data["Volume"] > data["Volume"].rolling(window=volume_period).mean())
 
     # Check if there are at least four FTDs or DDs recently
-    data["Multiple FTDs"] = data["FTD"].rolling(period).sum() >= 4
-    data["Multiple DDs"] = data["DD"].rolling(period).sum() >= 4
+    data["Multiple FTDs"] = data["FTD"].rolling(ftd_dd_period).sum() >= 4
+    data["Multiple DDs"] = data["DD"].rolling(ftd_dd_period).sum() >= 4
 
     return data
 

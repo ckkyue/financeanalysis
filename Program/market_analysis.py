@@ -217,7 +217,7 @@ def main():
     hsi_df = get_df("^HSI", current_date)
 
     # Plot all tickers (indices, US and HK sectors)
-    plot_all = False
+    plot_all = True
     if plot_all:
         for ticker in index_names + us_sectors + hk_sectors:
             df = get_df(ticker, current_date)

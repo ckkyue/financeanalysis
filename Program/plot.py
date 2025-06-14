@@ -102,6 +102,10 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
         if FTD_DD and all(col in df.columns for col in ["FTD", "DD"]):
             ax1.scatter(df.index[df["FTD"]], df["Low"][df["FTD"]] * 0.98, marker="x", color="green", label="FTD")
             ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 0.98, marker="x", color="red", label="DD")
+            # Plot multiple FTDs and DDs if columns exist
+            if all(col in df.columns for col in ["Multiple FTDs", "Multiple DDs"]):
+                ax1.scatter(df.index[df["Multiple FTDs"]], df["Low"][df["Multiple FTDs"]] * 0.96, marker="^", color="green", label="Multiple FTDs")
+                ax1.scatter(df.index[df["Multiple DDs"]], df["Low"][df["Multiple DDs"]] * 0.96, marker="v", color="red", label="Multiple DDs")
 
         # Plot SMAs if requested, ensuring they are drawn below the candlesticks
         periods = [5, 10, 20, 50, 200]
