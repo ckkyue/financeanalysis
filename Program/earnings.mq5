@@ -2,7 +2,7 @@
 // © kelvinyue37
 
 //@version=6
-indicator(title = 'Earnings', shorttitle = 'Earnings', overlay = true)
+indicator(title = 'Earnings', shorttitle = 'earnings', overlay = true)
 
 // Input parameters
 // Quantities to be displayed on the graph

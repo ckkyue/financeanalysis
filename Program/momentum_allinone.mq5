@@ -2,7 +2,7 @@
 // © kelvinyue37
 
 //@version=6
-indicator(title='Momentum All-in-One', shorttitle='MA MVP VCP ADX MFI', overlay=false)
+indicator(title='Momentum All-in-One', shorttitle='Momentum All-in-One', overlay=false)
 
 // Input parameters
 // Moving Averages settings
@@ -104,6 +104,37 @@ isVCP = na(highestClose) or na(lowestClose) or highestClose == 0 ? false : (1 - 
 // Plot VCP condition
 plotchar(isVCP, title="VCP", char=">", location=location.abovebar, color=color.orange, size=size.tiny, force_overlay = true)
 
+// FTD & DD settings
+ftdThreshold = input.float(title='FTD Threshold (%)', defval=1.5, minval=0.1, group='FTD & DD') / 100
+ddThreshold = input.float(title='DD Threshold (%)', defval=0.2, minval=0.1, group='FTD & DD') / 100
+volumePeriod = input.int(title='Volume Period', defval=50, minval=1, group='FTD & DD')
+ftdDdPeriod = input.int(title='FTD/DD Period', defval=20, minval=1, group='FTD & DD')
+
+// Calculate volume moving average
+volumeMA = ta.sma(volume, volumePeriod)
+
+// Calculate FTD (Follow-Through Day)
+isFTD = close > close[1] * (1 + ftdThreshold) and volume > volume[1] and volume > volumeMA
+
+// Calculate DD (Distribution Day)
+isDD = close < close[1] * (1 - ddThreshold) and volume > volume[1] and volume > volumeMA
+
+// Calculate rolling sums for multiple FTDs and DDs
+ftdSum = math.sum(isFTD ? 1 : 0, ftdDdPeriod)
+ddSum = math.sum(isDD ? 1 : 0, ftdDdPeriod)
+
+// Check for multiple FTDs and DDs
+multipleFTDs = ftdSum >= 4
+multipleDDs = ddSum >= 4
+
+// Plot FTD and DD
+plotshape(isFTD, title='FTD', style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
+plotshape(isDD, title='DD', style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, force_overlay=true)
+
+// Plot shapes for multiple FTDs and DDs
+plotshape(multipleFTDs, title='Multiple FTDs', style=shape.diamond, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
+plotshape(multipleDDs, title='Multiple DDs', style=shape.diamond, location=location.abovebar, color=color.red, size=size.small, force_overlay=true)
+
 // ADX & MFI settings
 adxPeriod = input.int(title='ADX Period', defval=14, minval=1, group='ADX & MFI')
 mfiPeriod = input.int(title='MFI Period', defval=14, minval=1, group='ADX & MFI')
@@ -151,12 +182,12 @@ hline(50, color=color.black)
 hline(20, title='Oversold', color=color.red)
 
 // Calculate rolling z-scores
-adxMean = bar_index < zScorePeriod ? ta.sma(adx, 126) : ta.sma(adx, zScorePeriod)
-adxStdDev = bar_index < zScorePeriod ? ta.stdev(adx, 126) : ta.stdev(adx, zScorePeriod)
+adxMean = bar_index < zScorePeriod ? ta.sma(adx, bar_index + 1) : ta.sma(adx, zScorePeriod)
+adxStdDev = bar_index < zScorePeriod ? ta.stdev(adx, bar_index + 1) : ta.stdev(adx, zScorePeriod)
 adxZScore = na(adxStdDev) ? na : (adx - adxMean) / adxStdDev
 
-mfiMean = bar_index < zScorePeriod ? ta.sma(mfi, 126) : ta.sma(mfi, zScorePeriod)
-mfiStdDev = bar_index < zScorePeriod ? ta.stdev(mfi, 126) : ta.stdev(mfi, zScorePeriod)
+mfiMean = bar_index < zScorePeriod ? ta.sma(mfi, bar_index + 1) : ta.sma(mfi, zScorePeriod)
+mfiStdDev = bar_index < zScorePeriod ? ta.stdev(mfi, bar_index + 1) : ta.stdev(mfi, zScorePeriod)
 mfiZScore = na(mfiStdDev) ? na : (mfi - mfiMean) / mfiStdDev
 
 // Display the most recent z-scores as labels on the plot
