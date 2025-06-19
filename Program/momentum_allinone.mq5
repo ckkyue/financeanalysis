@@ -135,27 +135,16 @@ plotshape(isDD, title='DD', style=shape.triangledown, location=location.abovebar
 plotshape(multipleFTDs, title='Multiple FTDs', style=shape.diamond, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
 plotshape(multipleDDs, title='Multiple DDs', style=shape.diamond, location=location.abovebar, color=color.red, size=size.small, force_overlay=true)
 
-// ADX & MFI settings
-adxPeriod = input.int(title='ADX Period', defval=14, minval=1, group='ADX & MFI')
-mfiPeriod = input.int(title='MFI Period', defval=14, minval=1, group='ADX & MFI')
-zScorePeriod = input.int(title='Z-Score Period', defval=252, minval=1, group='ADX & MFI')
+// MMFI & MFI settings
+mfiPeriod = input.int(title='MFI Period', defval=14, minval=1, group='MMFI & MFI')
+zScorePeriod = input.int(title='Z-Score Period', defval=252, minval=1, group='MMFI & MFI')
 
-// Calculate +DM and -DM
-plusDM = na(high[1]) ? 0 : (high - high[1] > low[1] - low and high - high[1] > 0 ? high - high[1] : 0)
-minusDM = na(low[1]) ? 0 : (low[1] - low > high - high[1] and low[1] - low > 0 ? low[1] - low : 0)
+// Get MMFI data - only if timeframe is daily or above
+mmfiClose = timeframe.isdaily or timeframe.isweekly or timeframe.ismonthly ? request.security("MMFI", timeframe.period, close) : na
 
-// Calculate +DI and -DI using EMA of +DM and -DM, divided by ATR
-plusDI = ta.ema(plusDM, adxPeriod) / ta.atr(adxPeriod) * 100
-minusDI = ta.ema(minusDM, adxPeriod) / ta.atr(adxPeriod) * 100
-
-// Calculate DX
-dx = na(plusDI + minusDI) ? na : math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100
-
-// Calculate ADX
-adx = ta.ema(dx, adxPeriod)
-
-// Plot the ADX
-plot(adx, title='ADX', color=color.orange)
+// Plot MMFI - only if data is available
+showMMFI = not na(mmfiClose)
+plot(showMMFI ? mmfiClose : na, title='MMFI', color=color.orange)
 
 // Calculate raw MF, and change of HLC3
 rawMF = hlc3 * volume
@@ -182,9 +171,9 @@ hline(50, color=color.black)
 hline(20, title='Oversold', color=color.red)
 
 // Calculate rolling z-scores
-adxMean = bar_index < zScorePeriod ? ta.sma(adx, bar_index + 1) : ta.sma(adx, zScorePeriod)
-adxStdDev = bar_index < zScorePeriod ? ta.stdev(adx, bar_index + 1) : ta.stdev(adx, zScorePeriod)
-adxZScore = na(adxStdDev) ? na : (adx - adxMean) / adxStdDev
+mmfiMean = showMMFI ? (bar_index < zScorePeriod ? ta.sma(mmfiClose, bar_index + 1) : ta.sma(mmfiClose, zScorePeriod)) : na
+mmfiStdDev = showMMFI ? (bar_index < zScorePeriod ? ta.stdev(mmfiClose, bar_index + 1) : ta.stdev(mmfiClose, zScorePeriod)) : na
+mmfiZScore = na(mmfiStdDev) ? na : (mmfiClose - mmfiMean) / mmfiStdDev
 
 mfiMean = bar_index < zScorePeriod ? ta.sma(mfi, bar_index + 1) : ta.sma(mfi, zScorePeriod)
 mfiStdDev = bar_index < zScorePeriod ? ta.stdev(mfi, bar_index + 1) : ta.stdev(mfi, zScorePeriod)
@@ -193,13 +182,14 @@ mfiZScore = na(mfiStdDev) ? na : (mfi - mfiMean) / mfiStdDev
 // Display the most recent z-scores as labels on the plot
 if bar_index == last_bar_index
     // Determine y-coordinates based on the condition
-    adxY = adx < mfi ? 25 : 55
-    mfiY = adx < mfi ? 55 : 25
+    mmfiY = showMMFI ? (mmfiClose < mfi ? 25 : 55) : na
+    mfiY = showMMFI ? (mmfiClose < mfi ? 55 : 25) : 55
 
     // Add "#" only if using fewer data points
-    adxLabelText = bar_index < zScorePeriod ? "#" + "ADX: " + str.tostring(adxZScore, "#.##") + "σ" : "ADX: " + str.tostring(adxZScore, "#.##") + "σ"
+    mmfiLabelText = showMMFI ? (bar_index < zScorePeriod ? "#" + "MMFI: " + str.tostring(mmfiZScore, "#.##") + "σ" : "MMFI: " + str.tostring(mmfiZScore, "#.##") + "σ") : na
     mfiLabelText = bar_index < zScorePeriod ? "#" + "MFI: " + str.tostring(mfiZScore, "#.##") + "σ" : "MFI: " + str.tostring(mfiZScore, "#.##") + "σ"
 
     // Create labels
-    label.new(bar_index + 8, adxY, text=adxLabelText, color=color.orange, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
+    if showMMFI
+        label.new(bar_index + 8, mmfiY, text=mmfiLabelText, color=color.orange, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
     label.new(bar_index + 8, mfiY, text=mfiLabelText, color=color.blue, style=label.style_label_down, size=size.small, textcolor=color.white, yloc=yloc.price)
