@@ -124,12 +124,12 @@ ftdSum = math.sum(isFTD ? 1 : 0, ftdDdPeriod)
 ddSum = math.sum(isDD ? 1 : 0, ftdDdPeriod)
 
 // Check for multiple FTDs and DDs
-multipleFTDs = ftdSum >= 4
-multipleDDs = ddSum >= 4
+multipleFTDs = ftdSum >= 4 and isFTD
+multipleDDs = ddSum >= 4 and isDD
 
 // Plot FTD and DD
-plotshape(isFTD, title='FTD', style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
-plotshape(isDD, title='DD', style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, force_overlay=true)
+plotshape(isFTD and not multipleFTDs, title='FTD', style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
+plotshape(isDD and not multipleDDs, title='DD', style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, force_overlay=true)
 
 // Plot shapes for multiple FTDs and DDs
 plotshape(multipleFTDs, title='Multiple FTDs', style=shape.diamond, location=location.belowbar, color=color.green, size=size.small, force_overlay=true)
