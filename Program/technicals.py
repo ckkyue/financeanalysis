@@ -1207,11 +1207,11 @@ def find_bear_markets(df, bear_market_threshold=-20):
     - list: List of bear market end dates.
     """
 
-    # Calculate the rolling maximum of the closing price
-    df["Rolling Max"] = df["Close"].cummax()
+    # Calculate the rolling maximum of the opening price
+    df["Rolling Max"] = df["Open"].cummax()
 
     # Calculate the percentage drop from the peak
-    df["Drop From Peak"] = (df["Close"] / df["Rolling Max"] - 1) * 100
+    df["Drop From Peak"] = (df["Low"] / df["Rolling Max"] - 1) * 100
 
     # Identify bear market regions (20% or more drop from peak)
     df["Bear Market"] = df["Drop From Peak"] <= bear_market_threshold
@@ -1221,12 +1221,17 @@ def find_bear_markets(df, bear_market_threshold=-20):
     bear_ends = []
     in_bear = False
     current_peak = None
+    peak_date = None
 
     for date, row in df.iterrows():
+        # Track the peak date when a new high is reached
+        if row["Open"] == row["Rolling Max"]:
+            peak_date = date
+            
         if not in_bear and row["Drop From Peak"] <= bear_market_threshold:
-            # Start of bear market
+            # Start of bear market at the peak date
             in_bear = True
-            bear_starts.append(date)
+            bear_starts.append(peak_date)
             current_peak = row["Rolling Max"]
         elif in_bear and row["Close"] >= current_peak:
             # End of bear market when price surpasses previous peak
@@ -1240,9 +1245,9 @@ def find_bear_markets(df, bear_market_threshold=-20):
     # Display information about bear markets
     bear_info = []
     for i, (start, end) in enumerate(zip(bear_starts, bear_ends)):
-        start_price = df.loc[start, "Close"]
-        lowest_price = df.loc[start:end, "Close"].min()
-        lowest_date = df.loc[start:end, "Close"].idxmin()
+        start_price = df.loc[start, "Open"]
+        lowest_price = df.loc[start:end, "Low"].min()
+        lowest_date = df.loc[start:end, "Low"].idxmin()
         max_drop = (lowest_price / df.loc[start, "Rolling Max"] - 1) * 100
         duration_days = (end - start).days
 
@@ -1250,6 +1255,7 @@ def find_bear_markets(df, bear_market_threshold=-20):
             "Bear Market #": i + 1,
             "Start Date": start.strftime('%Y-%m-%d'),
             "End Date": end.strftime('%Y-%m-%d'),
+            "Start Price": f"{start_price:.2f}",
             "Duration (days)": duration_days,
             "Max Drop (%)": f"{max_drop:.2f}%",
             "Lowest Date": lowest_date.strftime('%Y-%m-%d')

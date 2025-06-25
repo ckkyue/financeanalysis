@@ -460,7 +460,7 @@ def get_market_cap(stock, stock_info, end_date, current_date, backtest=False):
 
     return market_cap
 
-def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS this Y", "EPS Q/Q", "ROE"], backtest=False):
+def get_fundamentals(stock, end_date, current_date, columns=["EPS past 3/5Y", "EPS this Y", "EPS Q/Q", "ROE"], backtest=False):
     """
     Retrieve the fundamentals data of a stock.
 
@@ -496,10 +496,12 @@ def get_fundamentals(stock, end_date, current_date, columns=["EPS past 5Y", "EPS
     if end_date >= recent_earning_date:
         quote = Quote(ticker=stock)
         fundamental_df = quote.fundamental_df.loc[:, columns].copy()
+        fundamental_df[["EPS past 3Y", "EPS past 5Y"]] = fundamental_df["EPS past 3/5Y"].str.split(" ", expand=True)
+        fundamental_df = fundamental_df[["EPS past 3Y", "EPS past 5Y", "EPS this Y", "EPS Q/Q", "ROE"]]
         for col in fundamental_df.columns:
             fundamental_df[col] = fundamental_df[col].map(fundamentals_map)
         data = fundamental_df.values[0]
-        EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = *data,
+        EPS_past3Y_growth, EPS_past5Y_growth, EPS_thisY_growth, EPS_QoQ_growth, ROE = *data,
     else:
         EPS_past5Y_growth = EPS_thisY_growth = EPS_QoQ_growth = ROE = "N/A"
 
