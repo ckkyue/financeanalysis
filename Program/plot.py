@@ -1268,6 +1268,133 @@ def plot_rrg(items, item_dict, index_df, region, type, points=8, interval=5, sav
     # Show the plot
     plt.show()
 
+def plot_industry_performance(end_date, index_name, index_dict, return_periods=[20, 50, 252], period=252, RS=90, all_stocks=True, save=False):
+    """
+    Plot the average performance trends of stocks grouped by industry over a specified period.
+
+    Parameters:
+    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+    - index_name (str): Name of the index being analysed.
+    - index_dict (dict): Dictionary mapping index symbols to their respective names.
+    - return_periods (list, optional): List of periods for which to calculate returns. Default is [20, 50, 252].
+    - period (int, optional): The lookback period for stock selection. Default is 252.
+    - RS (int, optional): Relative strength threshold. Default is 90.
+    - all_stocks (bool): Flag indicating whether to include all stocks from the market.
+    - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
+
+    Returns:
+    - None: Generates a plot showing average industry performance trends over time.
+    """
+
+    # Define the result folder and the figure folder
+    result_folder = "Result"
+    figure_folder = os.path.join(result_folder, "Figure")
+
+    # Get the infix for file naming
+    infix = get_infix(index_name, index_dict, all_stocks)
+    
+    # Format the end date for use in filenames
+    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+
+    # Define the folder path where results will be stored
+    folder_path = os.path.join(result_folder, f"{end_date_fmt}")
+
+    # Define the filename for the Excel file containing screened stocks
+    filename = os.path.join(folder_path, f"{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
+    
+    # Read the data of the screened stocks from the Excel file
+    try:
+        df = pd.read_excel(filename)
+    except FileNotFoundError:
+        print(f"File not found: {filename}. Please run the stock screening function first.")
+        return
+
+    # Group stocks by industry
+    industry_groups = df.groupby("Industry")
+    
+    # Dictionary to store industry returns for different periods
+    industry_returns = {return_period: {} for return_period in return_periods}
+
+    # Process each industry
+    for industry, group in industry_groups:
+        stocks = group["Stock"].tolist()
+        
+        # List to store normalized prices for all stocks in industry
+        stock_prices = []
+        
+        # Get price data for each stock in the industry
+        for stock in stocks:
+            try:
+                stock_df = get_df(stock, end_date)
+                stock_df = stock_df[-period:]
+
+                # Normalize to starting price
+                normalized_prices = (stock_df["Close"] / stock_df["Close"].iloc[0]) * 100
+                stock_prices.append(normalized_prices)
+                    
+            except Exception as e:
+                print(f"Error processing {stock}: {e}")
+                continue
+        
+        # Calculate average performance for the industry
+        if stock_prices:
+            # Convert to DataFrame and calculate industry average
+            industry_df = pd.DataFrame(stock_prices).T
+            industry_avg = industry_df.mean(axis=1)
+            
+            # Calculate returns for different periods
+            for return_period in return_periods:
+                if len(industry_avg) >= return_period:
+                    start_price = industry_avg.iloc[-return_period]
+                    end_price = industry_avg.iloc[-1]
+                    industry_returns[return_period][industry] = ((end_price / start_price) - 1) * 100
+
+    # Get all unique industries and sort them
+    all_industries = sorted(set().union(*[period_data.keys() for period_data in industry_returns.values()]))
+    
+    # Create subplots for bar plots
+    fig, axes = plt.subplots(len(return_periods), 1, figsize=(10, 10), sharex=True)
+    
+    # Handle single subplot case
+    if len(return_periods) == 1:
+        axes = [axes]
+
+    for i, return_period in enumerate(return_periods):
+        ax = axes[i]
+        
+        # Get returns for each industry, filling with 0 if not available
+        returns = [industry_returns[return_period].get(industry, 0) for industry in all_industries]
+        
+        # Create bar colours based on performance
+        bar_colours = ["green" if x > 0 else "red" for x in returns]
+
+        # Create bar plot
+        bars = ax.bar(range(len(all_industries)), returns, color=bar_colours, alpha=0.7)
+        
+        ax.set_xticks(range(len(all_industries)))
+        ax.set_xticklabels(all_industries, rotation=45, ha='right', fontsize=10)
+        ax.set_ylabel("Return (%)")
+        ax.set_title(f"{return_period}-Day Performance")
+        ax.axhline(y=0, color="black", linestyle="-", linewidth=0.8)
+        ax.grid(True, alpha=0.3, axis='y')
+    
+    # Set the main title
+    plt.suptitle("Industry Performance Comparison", fontsize=16, y=0.98)
+    
+    # Set x-axis label only for the bottom subplot
+    axes[-1].set_xlabel("Industry", fontsize=12)
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save the plot
+    if save:
+        performance_filename = os.path.join(figure_folder, f"{infix}industryperformance.png")
+        plt.savefig(performance_filename, dpi=300, bbox_inches="tight")
+    
+    # Show the plot
+    plt.show()
+
 def plot_sector_industry_selected(end_date, index_name, index_dict, period=252, RS=90, industry_limit=20, all_stocks=True, save=False):
     """
     Plot the sector and industry distribution of selected stocks in two pie charts.
@@ -1389,7 +1516,7 @@ def plot_corr_ta(stock, df, cols=["Open", "High", "Low", "Close", "Volume", "MAC
     # Show the plot
     plt.show()
 
-def plot_corr_stocks(stocks, dfs, end_date=None, show=252, save=False):
+def plot_corr_stocks(stocks, dfs, end_date=None, show="max", save=False):
     """
     Plot the correlation matrix of closing prices for a list of stocks over a specified period.
 
@@ -1397,7 +1524,7 @@ def plot_corr_stocks(stocks, dfs, end_date=None, show=252, save=False):
     - stocks (list): A list of stock ticker symbols to analyse.
     - dfs (list): A list of DataFrames containing stock price data for each stock.
     - end_date (str, optional): The end date for the analysis in 'YYYY-MM-DD' format. Default is None, which uses the latest available data.
-    - show (int, optional): The number of most recent data points to display. Default is 252.
+    - show (int or str, optional): The number of most recent data points to display. If "max", shows all available data. Default is "max".
     - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
 
     Returns:
@@ -1416,24 +1543,20 @@ def plot_corr_stocks(stocks, dfs, end_date=None, show=252, save=False):
     # Merge the DataFrames of the specified stocks into a single DataFrame
     df_merged = merge_stocks(stocks, dfs)
 
+    # Calculate daily returns
+    returns_df = df_merged.pct_change(fill_method=None).dropna()[[f"Close ({stock})" for stock in stocks]]
+
     # Filter the DataFrame to show only the most recent data points
-    df_merged = df_merged[-show:]
+    if show == "max":
+        returns_df = returns_df
+    else:
+        returns_df = returns_df[- show:]
 
-    # Extract the closing prices for each stock as a list of arrays
-    dfs_close = [df_merged[f"Close ({stock})"].values for stock in stocks]
-
-    # Stack the closing prices into a 2D NumPy array (stocks x time)
-    data = np.array(dfs_close)
-
-    # Calculate the correlation matrix for the closing prices
-    correlation_matrix = np.corrcoef(data)
-
-    # Create a heatmap to visualize the correlation matrix
-    tick_labels = stocks
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", xticklabels=tick_labels, yticklabels=tick_labels)
-
-    # Set the title
-    plt.title(f"Correlation matrix of closing prices (last {show} days)")
+    # Calculate and display correlation matrix
+    correlation_matrix = returns_df.corr()
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", center=0, xticklabels=stocks, yticklabels=stocks)
+    plt.title("Stock Returns Correlation Matrix")
 
     # Adjust the spacing
     plt.tight_layout()

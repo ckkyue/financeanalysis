@@ -225,32 +225,36 @@ def main():
             plot_close(ticker, df, MVP_VCP=False, save=True)
 
     # US sector rotation analysis and RRG plot
-    sp500_df = get_JdK(index_names + us_sectors + hk_sectors, sp500_df, current_date)
-    us_sector_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
-    us_sector_excel_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
-    for sector in us_sectors:
-        rs_ratio = sp500_df[f"{sector} JdK RS-Ratio"].iloc[-1]
-        rs_momentum = sp500_df[f"{sector} JdK RS-Momentum"].iloc[-1]
-        category = classify(rs_ratio, rs_momentum)
-        us_sector_classification[category].append(us_sector_dict[sector])
-        us_sector_excel_classification[category].append(us_sector_excel_dict[sector])
-    for category, sectors_list in us_sector_classification.items():
-        print(f"{category} US sectors: {', '.join(sectors_list)}")
-    plot_rrg(us_sectors, us_sector_dict, sp500_df, "US", "sector", save=True)
+    plot_us_rrg = True
+    if plot_us_rrg:
+        sp500_df = get_JdK(index_names + us_sectors + hk_sectors, sp500_df, current_date)
+        us_sector_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
+        us_sector_excel_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
+        for sector in us_sectors:
+            rs_ratio = sp500_df[f"{sector} JdK RS-Ratio"].iloc[-1]
+            rs_momentum = sp500_df[f"{sector} JdK RS-Momentum"].iloc[-1]
+            category = classify(rs_ratio, rs_momentum)
+            us_sector_classification[category].append(us_sector_dict[sector])
+            us_sector_excel_classification[category].append(us_sector_excel_dict[sector])
+        for category, sectors_list in us_sector_classification.items():
+            print(f"{category} US sectors: {', '.join(sectors_list)}")
+        plot_rrg(us_sectors, us_sector_dict, sp500_df, "US", "sector", save=True)
 
     # HK sector rotation analysis and RRG plot
-    hsi_df = get_JdK(hk_sectors, hsi_df, current_date)
-    hk_sector_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
-    hk_sector_excel_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
-    for sector in hk_sectors:
-        rs_ratio = hsi_df[f"{sector} JdK RS-Ratio"].iloc[-1]
-        rs_momentum = hsi_df[f"{sector} JdK RS-Momentum"].iloc[-1]
-        category = classify(rs_ratio, rs_momentum)
-        hk_sector_classification[category].append(hk_sector_dict[sector])
-        hk_sector_excel_classification[category].append(hk_sector_excel_dict[sector])
-    for category, sectors_list in hk_sector_classification.items():
-        print(f"{category} HK sectors: {', '.join(sectors_list)}")
-    plot_rrg(hk_sectors, hk_sector_dict, hsi_df, "HK", "sector", save=True)
+    plot_hk_rrg = True
+    if plot_hk_rrg:
+        hsi_df = get_JdK(hk_sectors, hsi_df, current_date)
+        hk_sector_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
+        hk_sector_excel_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
+        for sector in hk_sectors:
+            rs_ratio = hsi_df[f"{sector} JdK RS-Ratio"].iloc[-1]
+            rs_momentum = hsi_df[f"{sector} JdK RS-Momentum"].iloc[-1]
+            category = classify(rs_ratio, rs_momentum)
+            hk_sector_classification[category].append(hk_sector_dict[sector])
+            hk_sector_excel_classification[category].append(hk_sector_excel_dict[sector])
+        for category, sectors_list in hk_sector_classification.items():
+            print(f"{category} HK sectors: {', '.join(sectors_list)}")
+        plot_rrg(hk_sectors, hk_sector_dict, hsi_df, "HK", "sector", save=True)
 
     # Plot JdK indicator for each US sector
     if plot_all:
@@ -262,6 +266,7 @@ def main():
     if screen_us:
          # Plot selected US sector/industry charts
         plot_sector_industry_selected(current_date, "^GSPC", index_dict, RS=90, all_stocks=all_stocks, save=True)
+        plot_industry_performance(current_date, index_name, index_dict, RS=90, all_stocks=all_stocks)
         current_date = modify_current_date(start, "^GSPC")
         excel_filename = get_excel_filename(current_date, "^GSPC", index_dict, period_long, 90, all_stocks, result_folder)
         screen_excel(excel_filename, us_sector_excel_classification)
@@ -277,7 +282,7 @@ def main():
 
     # Market breadth analysis and plots for S&P 500
     current_date = modify_current_date(start, "^GSPC")
-    sp500_df = get_df("^GSPC", current_date)
+    sp500_df = get_df("^GSPC", current_date, redownload=True)
     tickers = stock_market(current_date, current_date, "^GSPC", False)
     sp500_df = market_breadth(current_date, sp500_df, tickers)
     sp500_filename = f"Price data/GSPC_{current_date}.csv"
@@ -287,20 +292,22 @@ def main():
     plot_MFI_RSI("^GSPC", sp500_df, save=True)
 
     # VIX analysis and plot
-    vix_df = get_df("^VIX", current_date)
-    vix_current_high = round(vix_df["High"].iloc[-1], 2)
-    vix_df["SMA 5"] = SMA(vix_df, 5)
-    vix_sma5 = vix_df["SMA 5"].iloc[-1]
-    if vix_current_high < 26 and vix_sma5 <= 0:
-        vix_colour = "Green"
-    elif 26 < vix_current_high < 30 or vix_sma5 > 0:
-        vix_colour = "Yellow"
-    elif vix_current_high > 30:
-        vix_colour = "Red"
-    else:
-        vix_colour = "Unknown"
-    plot_close("^VIX", vix_df, save=True)
-    print(f"Current VIX: {vix_current_high} ({vix_colour})")
+    plot_vix = True
+    if plot_vix:
+        vix_df = get_df("^VIX", current_date)
+        vix_current_high = round(vix_df["High"].iloc[-1], 2)
+        vix_df["SMA 5"] = SMA(vix_df, 5)
+        vix_sma5 = vix_df["SMA 5"].iloc[-1]
+        if vix_current_high < 26 and vix_sma5 <= 0:
+            vix_colour = "Green"
+        elif 26 < vix_current_high < 30 or vix_sma5 > 0:
+            vix_colour = "Yellow"
+        elif vix_current_high > 30:
+            vix_colour = "Red"
+        else:
+            vix_colour = "Unknown"
+        plot_close("^VIX", vix_df, save=True)
+        print(f"Current VIX: {vix_current_high} ({vix_colour})")
 
     end = dt.datetime.now()
     print(end, "\n")
