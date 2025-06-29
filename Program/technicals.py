@@ -1193,18 +1193,22 @@ def compute_volume_profile(df, period=252, interval_num=200, price_interval=0.1)
 
     return volume_profile
 
-def find_bear_markets(df, bear_market_threshold=-20):
-    """"
-    Function to find bear markets in the S&P 500 data.
+def find_market_cycles(df, bear_market_threshold=-20):
+    """
+    Function to find both bear and bull markets in the S&P 500 data.
     
     Parameters:
     - df (pd.DataFrame): DataFrame containing S&P 500 data with a DateTime index.
     - bear_market_threshold (float, optional): Percentage drop from peak to define a bear market. Default is -20%.
     
     Returns:
-    - pd.DataFrame: DataFrame containing information about bear markets.
-    - list: List of bear market start dates.
-    - list: List of bear market end dates.
+    - tuple: Contains (bear_df, bull_df, bear_starts, bear_ends, bull_starts, bull_ends)
+        - bear_df (pd.DataFrame): DataFrame containing information about bear markets.
+        - bull_df (pd.DataFrame): DataFrame containing information about bull markets.
+        - bear_starts (list): List of bear market start dates.
+        - bear_ends (list): List of bear market end dates.
+        - bull_starts (list): List of bull market start dates.
+        - bull_ends (list): List of bull market end dates.
     """
 
     # Calculate the rolling maximum of the opening price
@@ -1227,7 +1231,6 @@ def find_bear_markets(df, bear_market_threshold=-20):
         # Track the peak date when a new high is reached
         if row["Open"] == row["Rolling Max"]:
             peak_date = date
-            
         if not in_bear and row["Drop From Peak"] <= bear_market_threshold:
             # Start of bear market at the peak date
             in_bear = True
@@ -1242,10 +1245,35 @@ def find_bear_markets(df, bear_market_threshold=-20):
     if in_bear:
         bear_ends.append(df.index[-1])
 
-    # Display information about bear markets
+    # Find bull market periods
+    bull_starts = []
+    bull_ends = []
+    
+    # First bull market starts from the beginning of data
+    if bear_starts:
+        bull_starts.append(df.index[0])
+        bull_ends.append(bear_starts[0])
+    
+    # Bull markets between bear markets
+    for i in range(len(bear_ends) - 1):
+        bull_starts.append(bear_ends[i])
+        bull_ends.append(bear_starts[i + 1])
+    
+    # Last bull market
+    if bear_ends and bear_ends[-1] < df.index[-1]:
+        bull_starts.append(bear_ends[-1])
+        bull_ends.append(df.index[-1])
+    
+    # If no bear markets found, entire period is bull market
+    if not bear_starts:
+        bull_starts.append(df.index[0])
+        bull_ends.append(df.index[-1])
+
+    # Create bear market information
     bear_info = []
     for i, (start, end) in enumerate(zip(bear_starts, bear_ends)):
         start_price = df.loc[start, "Open"]
+        end_price = df.loc[end, "Close"]
         lowest_price = df.loc[start:end, "Low"].min()
         lowest_date = df.loc[start:end, "Low"].idxmin()
         max_drop = (lowest_price / df.loc[start, "Rolling Max"] - 1) * 100
@@ -1256,13 +1284,35 @@ def find_bear_markets(df, bear_market_threshold=-20):
             "Start Date": start.strftime('%Y-%m-%d'),
             "End Date": end.strftime('%Y-%m-%d'),
             "Start Price": f"{start_price:.2f}",
+            "End Price": f"{end_price:.2f}",
             "Duration (days)": duration_days,
             "Max Drop (%)": f"{max_drop:.2f}%",
             "Lowest Date": lowest_date.strftime('%Y-%m-%d')
         })
 
-    # Create a DataFrame with bear market information
-    bear_df = pd.DataFrame(bear_info)
-    bear_df = bear_df.set_index("Bear Market #")
+    # Create bull market information
+    bull_info = []
+    for i, (start, end) in enumerate(zip(bull_starts, bull_ends)):
+        start_price = df.loc[start, "Open"]
+        end_price = df.loc[end, "Close"]
+        total_return = (end_price / start_price - 1) * 100
+        duration_days = (end - start).days
 
-    return bear_df, bear_starts, bear_ends
+        bull_info.append({
+            "Bull Market #": i + 1,
+            "Start Date": start.strftime('%Y-%m-%d'),
+            "End Date": end.strftime('%Y-%m-%d'),
+            "Start Price": f"{start_price:.2f}",
+            "End Price": f"{end_price:.2f}",
+            "Duration (days)": duration_days,
+            "Total Return (%)": f"{total_return:.2f}%"
+        })
+
+    # Create DataFrames
+    bear_df = pd.DataFrame(bear_info)
+    bear_df = bear_df.set_index("Bear Market #") if bear_info else pd.DataFrame()
+    
+    bull_df = pd.DataFrame(bull_info)
+    bull_df = bull_df.set_index("Bull Market #") if bull_info else pd.DataFrame()
+
+    return bear_df, bull_df, bear_starts, bear_ends, bull_starts, bull_ends
