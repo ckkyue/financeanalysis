@@ -13,6 +13,8 @@ from requests_ratelimiter import LimiterSession
 from scipy.stats import linregress
 import time
 from tqdm import tqdm
+import tvDatafeed as tv
+from tvDatafeed import Interval
 import yfinance as yf
 
 def check_DST(start):
@@ -197,7 +199,7 @@ def generate_end_dates(start_date=None, end_date=None, years=None, interval="1m"
         print(f"Error: {e}.")
         return None
 
-def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownload=False, max_retry=5, min_interval=0.2, save=True):
+def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownload=False, max_retry=5, min_interval=0.2, save=True, method="yfinance"):
     """
     Retrieve price data for a specified stock and save it to CSV.
 
@@ -211,144 +213,169 @@ def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownlo
     - max_retry (int, optional): Number of retry attempts for download. Defaults to 5.
     - min_interval (float, optional): Minimum seconds between calls. Default is 0.2.
     - save (bool, optional): If True, save data to CSV. Defaults to True.
+    - method (str, optional): Data source method ("yfinance" or "tradingview"). Defaults to "yfinance".
 
     Returns:
     - pd.DataFrame: Stock price data, or None if data cannot be retrieved or invalid period.
     """
 
-    delay = 5 # Default delay in seconds
-
-    # Map intervals to their maximum period
-    interval_periods = {
-        "1m": relativedelta(days=7),
-        "2m": relativedelta(days=59),
-        "5m": relativedelta(days=59),
-        "15m": relativedelta(days=59),
-        "30m": relativedelta(days=59),
-        "90m": relativedelta(days=59),
-        "60m": relativedelta(days=729),
-        "1h": relativedelta(days=729),
-    }
-
-    # Calculate start date based on interval
-    csv_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - interval_periods.get(interval, relativedelta(years=40))).strftime("%Y-%m-%d")
-
-    # Define the folder path for saving price data
+    # Common setup - define folder path and file naming logic
     folder_path = "Price data"
+    
+    # Determine file suffix based on method and parameters
+    if method == "tradingview":
+        filename = os.path.join(folder_path, f"{stock}_{end_date}.csv")
+        file_suffix = ""
+    else:
+        max_suffix = "_max" if max_period else ""
+        interval_suffix = f"_{interval}" if interval != "1d" else ""
+        file_suffix = f"{max_suffix}{interval_suffix}"
+        filename = os.path.join(folder_path, f"{stock}_{end_date}{file_suffix}.csv")
 
-    # Name the file
-    max_suffix = "_max" if max_period else ""
-    interval_suffix = f"_{interval}" if interval != "1d" else ""
-    file_suffix = f"{max_suffix}{interval_suffix}"
-    filename = os.path.join(folder_path, f"{stock}_{end_date}{file_suffix}.csv")
-
-    # Check for existing data files for the stock
+    # Common file management logic
     current_files = [
         file for file in os.listdir(folder_path)
         if file.startswith(f"{stock}_") and file.endswith(f"{file_suffix}.csv")
     ]
     dates = [file.replace(".csv", "").split("_")[1] for file in current_files]
-    
-    # Determine the maximum date from existing files
     max_date = max(dates, default=None)
 
-    # Remove outdated files
+    # Remove outdated files and update filename if newer exists
     if max_date:
         for date in dates:
             if date < max_date:
                 old_file = os.path.join(folder_path, f"{stock}_{date}{file_suffix}.csv")
                 if os.path.exists(old_file):
                     os.remove(old_file)
-        # Use latest file
         if max_date > end_date:
             filename = os.path.join(folder_path, f"{stock}_{max_date}{file_suffix}.csv")
 
     # Check if download is needed
     need_download = (redownload or not os.path.isfile(filename))
 
+    # Download data if needed
     if need_download:
-        df = None
-        for attempt in range(1, max_retry + 1):
-            # Rate limit
-            last_call = getattr(get_df, "_yf_last_call", None)
-            now = time.time()
-            if last_call is not None:
-                elapsed = now - last_call
-                if elapsed < min_interval:
-                    time.sleep(min_interval - elapsed)
-            get_df._yf_last_call = time.time()
-
-            stdout_buffer = io.StringIO()
-            stderr_buffer = io.StringIO()
+        if method == "tradingview":
             try:
-                with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                    params = {
-                        "session": session,
-                        "auto_adjust": False
-                    }
-                    if max_period:
-                        df = yf.download(stock, **params)
-                    else:
-                        df = yf.download(stock, start=csv_date, end=end_date, interval=interval, **params)
-
-                captured_output = stdout_buffer.getvalue() + stderr_buffer.getvalue()
-                errors = ["YFInvalidPeriodError", "YFPricesMissingError", "YFTzMissingError"]
-                for error in errors:
-                    if error in captured_output:
-                        print(f"{error} for {stock}. Returning None.")
-                        return None
-
-                if not df.empty:
-                    break
-                print(f"Empty DataFrame for {stock} on attempt {attempt}.")
-                if attempt < max_retry - 1:
-                    time.sleep(delay)
-
+                tv_client = tv.TvDatafeed()
+                df = tv_client.get_hist(symbol=stock, exchange="INDEX", interval=Interval.in_daily, n_bars=10000)
+                
+                if df is None or df.empty:
+                    print(f"Failed to retrieve TradingView data for {stock}.")
+                    return None
+                
+                # Process TradingView data
+                df.columns = [col.capitalize() for col in df.columns]
+                df.index = pd.to_datetime(df.index)
+                df.index.name = "Datetime"
+                df.index = df.index.normalize()
+                
+                if "Volume" in df.columns:
+                    df = df.drop(columns=["Volume"])
+                
             except Exception as e:
-                error_message = str(e).lower()
-                print(f"Error downloading {stock} on attempt {attempt}: {e}")
-                # Check for specific rate limiting keywords
-                if "rate" in error_message or "limit" in error_message or "429" in error_message:
-                    delay = 30
-                if attempt < max_retry - 1:
-                    print(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
+                print(f"Error downloading {stock} from TradingView: {e}")
+                return None
 
-        if df is None or df.empty:
-            print(f"Failed to update price data for {stock}.")
-            if max_date:
-                fallback_file = os.path.join(folder_path, f"{stock}_{max_date}{file_suffix}.csv")
-                if os.path.exists(fallback_file):
-                    return pd.read_csv(fallback_file)
-            return None
+        else:  # yfinance method
+            delay = 5
+            interval_periods = {
+                "1m": relativedelta(days=7),
+                "2m": relativedelta(days=59),
+                "5m": relativedelta(days=59),
+                "15m": relativedelta(days=59),
+                "30m": relativedelta(days=59),
+                "90m": relativedelta(days=59),
+                "60m": relativedelta(days=729),
+                "1h": relativedelta(days=729),
+            }
+            
+            csv_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - interval_periods.get(interval, relativedelta(years=40))).strftime("%Y-%m-%d")
+            
+            df = None
+            for attempt in range(1, max_retry + 1):
+                # Rate limit
+                last_call = getattr(get_df, "_yf_last_call", None)
+                now = time.time()
+                if last_call is not None:
+                    elapsed = now - last_call
+                    if elapsed < min_interval:
+                        time.sleep(min_interval - elapsed)
+                get_df._yf_last_call = time.time()
 
-        # Process DataFrame
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel(1)
-        df.index = pd.to_datetime(df.index.date if interval == "1d" else df.index, utc=interval != "1d")
-        df.index.name = "Date" if interval == "1d" else "Datetime"
+                stdout_buffer = io.StringIO()
+                stderr_buffer = io.StringIO()
+                try:
+                    with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+                        params = {
+                            "session": session,
+                            "auto_adjust": False
+                        }
+                        if max_period:
+                            df = yf.download(stock, **params)
+                        else:
+                            df = yf.download(stock, start=csv_date, end=end_date, interval=interval, **params)
 
-        # Remove old file if needed
-        if max_date and max_date < end_date:
-            old_file = os.path.join(folder_path, f"{stock}_{max_date}{file_suffix}.csv")
-            if os.path.exists(old_file):
-                os.remove(old_file)
+                    captured_output = stdout_buffer.getvalue() + stderr_buffer.getvalue()
+                    errors = ["YFInvalidPeriodError", "YFPricesMissingError", "YFTzMissingError"]
+                    for error in errors:
+                        if error in captured_output:
+                            print(f"{error} for {stock}. Returning None.")
+                            return None
 
-        # Save to CSV
+                    if not df.empty:
+                        break
+                    print(f"Empty DataFrame for {stock} on attempt {attempt}.")
+                    if attempt < max_retry:
+                        time.sleep(delay)
+
+                except Exception as e:
+                    error_message = str(e).lower()
+                    print(f"Error downloading {stock} on attempt {attempt}: {e}")
+                    if "rate" in error_message or "limit" in error_message or "429" in error_message:
+                        delay = 30
+                    if attempt < max_retry:
+                        print(f"Retrying in {delay} seconds...")
+                        time.sleep(delay)
+
+            if df is None or df.empty:
+                print(f"Failed to update price data for {stock}.")
+                if max_date:
+                    fallback_file = os.path.join(folder_path, f"{stock}_{max_date}{file_suffix}.csv")
+                    if os.path.exists(fallback_file):
+                        return pd.read_csv(fallback_file)
+                return None
+
+            # Process yfinance data
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+            df.index = pd.to_datetime(df.index.date if interval == "1d" else df.index, utc=interval != "1d")
+            df.index.name = "Date" if interval == "1d" else "Datetime"
+
+            # Remove old file if newer data was downloaded
+            if max_date and max_date < end_date:
+                old_file = os.path.join(folder_path, f"{stock}_{max_date}{file_suffix}.csv")
+                if os.path.exists(old_file):
+                    os.remove(old_file)
+
+        # Save to CSV (common for both methods)
         if save:
             df.to_csv(filename)
 
     else:
+        # Load existing file (common for both methods)
         df = pd.read_csv(filename)
+        if method == "tradingview":
+            df.set_index(pd.to_datetime(df["Datetime"]), inplace=True)
+            df.index.name = "Datetime"
+            df.drop(columns=["Datetime"], inplace=True)
+        else:
+            df.set_index(pd.to_datetime(df["Date" if interval == "1d" else "Datetime"], utc=interval != "1d"), inplace=True)
+            df.index.name = "Date" if interval == "1d" else "Datetime"
+            df.drop(columns=["Date" if interval == "1d" else "Datetime"], inplace=True)
 
-    # Adjust index for loaded or processed DataFrame
-    if not need_download:
-        df.set_index(pd.to_datetime(df["Date" if interval == "1d" else "Datetime"], utc=interval != "1d"), inplace=True)
-        df.index.name = "Date" if interval == "1d" else "Datetime"
-        df.drop(columns=["Date" if interval == "1d" else "Datetime"], inplace=True)
-
-    # Adjust OHLC prices if requested
-    if adj:
+    # Apply adjustments if requested (only for yfinance data)
+    if adj and method == "yfinance":
         for col in ["Open", "High", "Low", "Close"]:
             df[col] = df["Adj Close"] / df["Close"] * df[col]
         df.drop(columns=["Adj Close"], inplace=True)
@@ -627,6 +654,7 @@ def stock_market(end_date, current_date, index_name, all_stocks, bloomberg=False
     # NASDAQ Composite
     elif index_name == "^IXIC":
         from yahoo_fin import stock_info as si
+
         tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in si.tickers_nasdaq()]
         tickers.sort()
 
