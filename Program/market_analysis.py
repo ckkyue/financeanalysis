@@ -241,7 +241,7 @@ def main():
         plot_rrg(us_sectors, us_sector_dict, sp500_df, "US", "sector", save=True)
 
     # HK sector rotation analysis and RRG plot
-    plot_hk_rrg = False
+    plot_hk_rrg = True
     if plot_hk_rrg:
         hsi_df = get_JdK(hk_sectors, hsi_df, current_date)
         hk_sector_classification = {k: [] for k in ["Leading", "Weakening", "Improving", "Lagging"]}
@@ -264,7 +264,7 @@ def main():
     # Screen US stocks and apply Excel formatting
     screen_us = True
     if screen_us:
-         # Plot selected US sector/industry charts
+        # Plot selected US sector/industry charts
         plot_sector_industry_selected(current_date, "^GSPC", index_dict, RS=90, all_stocks=all_stocks, save=True)
         plot_industry_performance(current_date, index_name, index_dict, RS=90, all_stocks=all_stocks, save=True)
         current_date = modify_current_date(start, "^GSPC")
@@ -272,7 +272,7 @@ def main():
         screen_excel(excel_filename, us_sector_excel_classification)
 
     # Screen HK stocks and apply Excel formatting
-    screen_hk = False
+    screen_hk = True
     if screen_hk:
         # Plot selected HK sector/industry charts
         plot_sector_industry_selected(current_date, "^HSI", index_dict, RS=80, all_stocks=all_stocks, save=True)
