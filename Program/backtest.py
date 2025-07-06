@@ -130,155 +130,193 @@ def momentum_equity_curve(end_dates, current_date, index_name, index_dict, all_s
         # Initialise dictionaries to track stop loss and stop gain statuses for each stock during backtesting
         stoploss_prev, trigger_3r_prev, trigger_2r_prev = {}, {}, {}
 
+        # Pre-compute constants
+        fee_factor = 1 + fee_rate
+        slippage_factor = 1 + slippage
+        buy_factor = fee_factor * slippage_factor
+        sell_factor = (1 - fee_rate) * (1 - slippage)
+
         # Iterate over all intervals
-        for i in tqdm(range(len(end_dates) - 1)):
+        for i in range(len(end_dates) - 1):
             start_date, end_date = end_dates[i], end_dates[i + 1]
             stocks_prev = stocks_list[i - 1] if i > 0 else None
             stocks = stocks_list[i]
             stocks_next = stocks_list[i + 1] if i < len(end_dates) - 2 else None
 
             # Determine if short SMA is above long SMA or if SMA crossover is disabled
-            sma_cond = index_df[f"SMA {period_short}"].shift(1).loc[start_date] > index_df[f"SMA {period_long}"].shift(1).loc[start_date] if sma_crossover else True
-            factor = 1 if sma_cond else 0
+            if sma_crossover:
+                sma_cond = index_df[f"SMA {period_short}"].shift(1).loc[start_date] > index_df[f"SMA {period_long}"].shift(1).loc[start_date]
+                factor = 1 if sma_cond else 0
+            else:
+                factor = 1
 
-            if stocks is not None:
-                # Iterate over selected stocks
-                for j, stock in enumerate(stocks[:min(top, len(stocks))]):
+            if stocks is None:
+                continue
 
-                    # Get the price data of the stock
-                    df = get_df(stock, current_date)
+            # Iterate over selected stocks
+            for j, stock in enumerate(stocks[:top]):
+                # Get the price data of the stock
+                df = get_df(stock, current_date)
+                
+                # Check if the DataFrame is empty
+                if df is None or df.empty:
+                    continue
                     
-                    # Check if the DataFrame is empty
-                    if df is None or df.empty:
-                        continue
+                try:
+                    # Filter price data of the stock to the backtesting period
+                    df = df[end_dates[0] : end_dates[-1]]
+
+                    # Calculate the percentage change of the stock
+                    df["Percent Change"] = df["Close"].pct_change()
+                    
+                    # Check if we need to buy the stock
+                    is_new_position = (stocks_prev is None or stock not in stocks_prev or 
+                                     stoploss_prev.get(f"{stock} {i - 1}", False) or 
+                                     trigger_3r_prev.get(f"{stock} {i - 1}", False))
+                    
+                    if is_new_position:
+                        # Buy the stock at the start date
+                        open_price = df.loc[start_date, "Open"]
+                        close_price = df.loc[start_date, "Close"]
                         
-                    try:
-                        # Filter price data of the stock to the backtesting period
-                        df = df[end_dates[0] : end_dates[-1]]
-
-                        # Calculate the percentage change of the stock
-                        df["Percent Change"] = df["Close"].pct_change()
-                        if stocks_prev is None or stock not in stocks_prev or stoploss_prev.get(f"{stock} {i - 1}", False) or trigger_3r_prev.get(f"{stock} {i - 1}", False):
-                            # Buy the stock at the start date
-                            if trigger_2r_prev.get(f"{stock} {i - 1}", False):
-                                df.loc[start_date, "Percent Change"] = 0.5 * df.loc[start_date, "Percent Change"] + 0.5 * (df.loc[start_date, "Close"] - (1 + fee_rate) * (1 + slippage) * df.loc[start_date, "Open"]) / ((1 + fee_rate + slippage) * df.loc[start_date, "Open"])
-                            else:
-                                df.loc[start_date, "Percent Change"] = (df.loc[start_date, "Close"] - (1 + fee_rate) * (1 + slippage) * df.loc[start_date, "Open"]) / ((1 + fee_rate) * (1 + slippage) * df.loc[start_date, "Open"])
-
-                        # Filter the price data of the stock to the interval
-                        df = df[start_date : end_date].fillna({"Percent Change": 0})
-
-                        # Record the price of the stock at the start date
-                        price_start = df["Close"].iloc[0]
-
-                        # Calculate the stoploss, 1R, 2R, and 3R prices
-                        if stoploss_threshold:
-                            price_sl = price_start * (1 - stoploss_threshold)
-                            price_sl_tight = price_start * (1 - 0.5 * stoploss_threshold)
-                            price_1r = price_start * (1 + stoploss_threshold)
-                        if stopgain_threshold:
-                            price_2r = price_start * (1 + stopgain_threshold)
-                            price_3r = price_start * (1 + 1.5 * stopgain_threshold)
-
-                        # Calculate the cumulative return of the stock
-                        df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
-
-                        # Initialise variables for stop loss and stop gain handling
-                        sell_date = None
-                        stoploss_active = False
-                        trigger_1r = False
-                        trigger_2r = False
-                        trigger_3r = False
-
-                        # Check if stop loss and stop gain threshold is defined
-                        if stoploss_threshold:
-                            df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
-                            df["1R Triggered"] = df["Close"].shift(1) >= price_1r
-                        if stopgain_threshold:
-                            df["2R Triggered"] = df["Close"].shift(1) >= price_2r
-                            df["3R Triggered"] = df["Close"].shift(1) >= price_3r
-
-                        for idx in df.index:
-                            if stoploss_active or trigger_3r:
-                                # After selling the stock, set the percent change to 0
-                                df.loc[idx, "Percent Change"] = 0
-                            elif trigger_2r:
-                                # Apply half of the percent change if 2R is triggered
-                                df.loc[idx, "Percent Change"] = 0.5 * df.loc[idx, "Percent Change"]
-                            elif df.loc[idx, "Stop Loss Triggered"]:
-                                # Apply stop loss and record the sell date
-                                stoploss_active = True
-                                sell_date = idx
-                                if trigger_2r:
-                                    # Apply half of the stop loss percent change if 2R has been triggered
-                                    df.loc[idx, "Percent Change"] = 0.5 * ((1 - fee_rate) * (1 - slippage) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
-                                else:
-                                    df.loc[idx, "Percent Change"] = ((1 - fee_rate) * (1 - slippage) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
-                            elif df.loc[idx, "1R Triggered"] and not trigger_1r:
-                                # Tighten the stop loss if 1R is triggered
-                                trigger_1r = True
-                                price_sl = price_sl_tight
-                                df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
-                            elif df.loc[idx, "2R Triggered"]:
-                                # Sell half of the position if 2R is triggered
-                                trigger_2r = True
-                                price_sl = price_start
-                                df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
-                                df.loc[idx, "Percent Change"] = 0.5 * df.loc[idx, "Percent Change"] + 0.5 * ((1 - fee_rate) * (1 - slippage) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx]) / df["Close"].shift(1).loc[idx]
-                                trigger_2r_prev[f"{stock} {i}"] = True
-                            elif df.loc[idx, "3R Triggered"]:
-                                # Sell all of the position if 3R is triggered
-                                trigger_3r = True
-                                sell_date = idx
-                                df.loc[idx, "Percent Change"] = 0.5 * (((1 - fee_rate) * (1 - slippage) * df.loc[idx, "Open"] - df["Close"].shift(1).loc[idx])) / df["Close"].shift(1).loc[idx]
-                            
-                            # If no stop loss or stop gain, assign the end date as the sell date
-                            if sell_date is None:
-                                sell_date = end_date
-                                if stocks_next is None or stock not in stocks_next:
-                                    # Sell the stock at the sell date
-                                    if trigger_2r:
-                                        df.loc[sell_date, "Percent Change"] = 0.5 * ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
-                                    else:
-                                        df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
-                            
-                            # Record the stop loss or stop gain status of the stock
-                            if sell_date != end_date:
-                                if stoploss_active:
-                                    stoploss_prev[f"{stock} {i}"] = True
-                                elif trigger_3r:
-                                    trigger_3r_prev[f"{stock} {i}"] = True
-
+                        if trigger_2r_prev.get(f"{stock} {i - 1}", False):
+                            df.loc[start_date, "Percent Change"] = 0.5 * df.loc[start_date, "Percent Change"] + 0.5 * (close_price - buy_factor * open_price) / (buy_factor * open_price)
                         else:
-                            sell_date = end_date
-                            if stocks_next is None or stock not in stocks_next:
-                                # Sell the stock at the sell date
-                                df.loc[sell_date, "Percent Change"] = ((1 - fee_rate) * (1 - fee_rate) * df.loc[sell_date, "Open"] - df["Close"].shift(1).loc[sell_date]) / df["Close"].shift(1).loc[sell_date]
+                            df.loc[start_date, "Percent Change"] = (close_price - buy_factor * open_price) / (buy_factor * open_price)
 
-                        # Calculate the cumulative return of the stock again
-                        df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+                    # Filter the price data of the stock to the interval
+                    df = df[start_date : end_date].fillna({"Percent Change": 0})
 
-                        # Store results in the index DataFrame
-                        index_df.loc[start_date : end_date, f"Stock {j + 1}"] = stock
-                        index_df.loc[start_date : sell_date, f"Buy Stock {j + 1} Percent Change"] = df["Percent Change"]
-                        index_df.loc[sell_date, f"Buy Stock {j + 1} Percent Change"] = 0
-                        index_df.loc[sell_date, f"Sell Stock {j + 1} Percent Change"] = df.loc[sell_date, "Percent Change"]
-                        index_df.loc[start_date : end_date, f"Stock {j + 1} Cumulative Return"] = df["Cumulative Return"]
+                    # Record the price of the stock at the start date
+                    price_start = df["Close"].iloc[0]
 
-                    except Exception as e:
-                        print(f"Error calculating returns for {stock}: {e}.")
-                        pass
+                    # Calculate the stoploss, 1R, 2R, and 3R prices
+                    if stoploss_threshold:
+                        price_sl = price_start * (1 - stoploss_threshold)
+                        price_sl_tight = price_start * (1 - 0.5 * stoploss_threshold)
+                        price_1r = price_start * (1 + stoploss_threshold)
+                    if stopgain_threshold:
+                        price_2r = price_start * (1 + stopgain_threshold)
+                        price_3r = price_start * (1 + 1.5 * stopgain_threshold)
 
-                # Adjust percent change columns by the number of stocks
-                for j in range(min(top, len(stocks))):
-                    col_buy = f"Buy Stock {j + 1} Percent Change"
-                    col_sell = f"Sell Stock {j + 1} Percent Change"
-                    for col in [col_buy, col_sell]:
-                        if col in index_df.columns:
-                            index_df.loc[start_date : end_date, col] *= factor / top
+                    # Calculate the cumulative return of the stock
+                    df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+
+                    # Initialise variables for stop loss and stop gain handling
+                    sell_date = None
+                    stoploss_active = False
+                    trigger_flags = {"1r": False, "2r": False, "3r": False}
+
+                    # Check if stop loss and stop gain threshold is defined
+                    if stoploss_threshold:
+                        df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
+                        df["1R Triggered"] = df["Close"].shift(1) >= price_1r
+                    if stopgain_threshold:
+                        df["2R Triggered"] = df["Close"].shift(1) >= price_2r
+                        df["3R Triggered"] = df["Close"].shift(1) >= price_3r
+
+                    # Process each date in the interval
+                    for idx in df.index:
+                        if stoploss_active or trigger_flags["3r"]:
+                            # After selling the stock, set the percent change to 0
+                            df.loc[idx, "Percent Change"] = 0
+                        elif trigger_flags["2r"]:
+                            # Apply half of the percent change if 2R is triggered
+                            df.loc[idx, "Percent Change"] *= 0.5
+                        elif stoploss_threshold and df.loc[idx, "Stop Loss Triggered"]:
+                            # Apply stop loss and record the sell date
+                            stoploss_active = True
+                            sell_date = idx
+                            prev_close = df["Close"].shift(1).loc[idx]
+                            open_price = df.loc[idx, "Open"]
+                            change = (sell_factor * open_price - prev_close) / prev_close
+                            
+                            if trigger_flags["2r"]:
+                                df.loc[idx, "Percent Change"] = 0.5 * change
+                            else:
+                                df.loc[idx, "Percent Change"] = change
+                        elif stoploss_threshold and df.loc[idx, "1R Triggered"] and not trigger_flags["1r"]:
+                            # Tighten the stop loss if 1R is triggered
+                            trigger_flags["1r"] = True
+                            price_sl = price_sl_tight
+                            df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
+                        elif stopgain_threshold and df.loc[idx, "2R Triggered"]:
+                            # Sell half of the position if 2R is triggered
+                            trigger_flags["2r"] = True
+                            price_sl = price_start
+                            df["Stop Loss Triggered"] = df["Close"].shift(1) <= price_sl
+                            prev_close = df["Close"].shift(1).loc[idx]
+                            open_price = df.loc[idx, "Open"]
+                            change = (sell_factor * open_price - prev_close) / prev_close
+                            df.loc[idx, "Percent Change"] = 0.5 * df.loc[idx, "Percent Change"] + 0.5 * change
+                            trigger_2r_prev[f"{stock} {i}"] = True
+                        elif stopgain_threshold and df.loc[idx, "3R Triggered"]:
+                            # Sell all of the position if 3R is triggered
+                            trigger_flags["3r"] = True
+                            sell_date = idx
+                            prev_close = df["Close"].shift(1).loc[idx]
+                            open_price = df.loc[idx, "Open"]
+                            change = (sell_factor * open_price - prev_close) / prev_close
+                            df.loc[idx, "Percent Change"] = 0.5 * change
+                    
+                    # If no stop loss or stop gain triggered, handle end of interval
+                    if sell_date is None:
+                        sell_date = end_date
+                        if stocks_next is None or stock not in stocks_next:
+                            # Sell the stock at the sell date
+                            prev_close = df["Close"].shift(1).loc[sell_date]
+                            open_price = df.loc[sell_date, "Open"]
+                            change = (sell_factor * open_price - prev_close) / prev_close
+                            
+                            if trigger_flags["2r"]:
+                                df.loc[sell_date, "Percent Change"] = 0.5 * change
+                            else:
+                                df.loc[sell_date, "Percent Change"] = change
+                    
+                    # Record the stop loss or stop gain status of the stock
+                    if sell_date != end_date:
+                        if stoploss_active:
+                            stoploss_prev[f"{stock} {i}"] = True
+                        elif trigger_flags["3r"]:
+                            trigger_3r_prev[f"{stock} {i}"] = True
+
+                    # Calculate the cumulative return of the stock again
+                    df["Cumulative Return"] = (df["Percent Change"] + 1).cumprod()
+
+                    # Store results in the index DataFrame
+                    index_df.loc[start_date : end_date, f"Stock {j + 1}"] = stock
+                    index_df.loc[start_date : sell_date, f"Buy Stock {j + 1} Percent Change"] = df["Percent Change"]
+                    index_df.loc[sell_date, f"Buy Stock {j + 1} Percent Change"] = 0
+                    index_df.loc[sell_date, f"Sell Stock {j + 1} Percent Change"] = df.loc[sell_date, "Percent Change"]
+                    index_df.loc[start_date : end_date, f"Stock {j + 1} Cumulative Return"] = df["Cumulative Return"]
+
+                except Exception as e:
+                    print(f"Error calculating returns for {stock}: {e}")
+                    continue
+
+            # Adjust percent change columns by the number of stocks
+            for j in range(min(top, len(stocks))):
+                col_buy = f"Buy Stock {j + 1} Percent Change"
+                col_sell = f"Sell Stock {j + 1} Percent Change"
+                adjustment_factor = factor / top
+                
+                for col in [col_buy, col_sell]:
+                    if col in index_df.columns:
+                        index_df.loc[start_date : end_date, col] *= adjustment_factor
                 
         # Calculate overall stock percent change and cumulative return
-        index_df["Stock Percent Change"] = sum(index_df[f"Buy Stock {i + 1} Percent Change"].fillna(0) + index_df[f"Sell Stock {i + 1} Percent Change"].fillna(0) for i in range(top)) * leverage
+        stock_percent_changes = []
+        for i in range(top):
+            buy_col = f"Buy Stock {i + 1} Percent Change"
+            sell_col = f"Sell Stock {i + 1} Percent Change"
+            if buy_col in index_df.columns and sell_col in index_df.columns:
+                stock_percent_changes.append(index_df[buy_col].fillna(0) + index_df[sell_col].fillna(0))
+        
+        if stock_percent_changes:
+            index_df["Stock Percent Change"] = sum(stock_percent_changes) * leverage
+        else:
+            index_df["Stock Percent Change"] = 0
+            
         index_df["Cumulative Stock Return"] = (index_df["Stock Percent Change"] + 1).cumprod()
 
         # Save the index DataFrame to a CSV file
