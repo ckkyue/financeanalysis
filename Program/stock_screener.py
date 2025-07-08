@@ -708,7 +708,7 @@ def main():
 
     # Stock selection for different combinations of index names and stock selection
     all_stocks_options = [True, False]
-    index_names = ["^HSI"]
+    index_names = ["^GSPC"]
     for all_stock_option, index_name in tqdm(itertools.product(all_stocks_options, index_names), total=len(all_stocks_options) * len(index_names), desc="HK/US stock selections"):
         # Set the RS threshold based on the index name
         RS = 90 if index_name == "^GSPC" else 80

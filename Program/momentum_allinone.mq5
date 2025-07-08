@@ -18,6 +18,8 @@ ma5Length = input.int(title='MA 5 Length', defval=100, minval=1, group='Moving A
 ma5Type = input.string(title='MA 5 Type', defval='SMA', options=['SMA', 'EMA', 'VWMA'], group='Moving Averages')
 ma6Length = input.int(title='MA 6 Length', defval=200, minval=1, group='Moving Averages')
 ma6Type = input.string(title='MA 6 Type', defval='SMA', options=['SMA', 'EMA', 'VWMA'], group='Moving Averages')
+ma7Length = input.int(title='MA 7 Length', defval=15, minval=1, group='Moving Averages')
+ma7Type = input.string(title='MA 7 Type', defval='SMA', options=['SMA', 'EMA', 'VWMA'], group='Moving Averages')
 
 // Colors for moving averages
 ma1Color = color.orange
@@ -26,6 +28,7 @@ ma3Color = color.fuchsia
 ma4Color = color.blue
 ma5Color = color.lime
 ma6Color = color.yellow
+ma7Color = color.rgb(255, 69, 0)
 
 // Function to calculate the moving average
 getMovingAverage(src, length, maType) =>
@@ -54,6 +57,9 @@ plot(closeMa5, color=ma5Color, title='MA 5', force_overlay = true)
 
 closeMa6 = getMovingAverage(close, ma6Length, ma6Type)
 plot(closeMa6, color=ma6Color, title='MA 6', force_overlay = true)
+
+closeMa7 = getMovingAverage(close, ma7Length, ma7Type)
+plot(closeMa7, color=ma7Color, title='MA 7', force_overlay = true)
 
 // MVP and VCP settings
 mvpPeriod = input.int(title="MVP Period", defval=15, minval=1, group='MVP & VCP')
