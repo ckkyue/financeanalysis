@@ -14,7 +14,7 @@ import seaborn as sns
 from statsmodels.tsa.stattools import acf
 from technicals import *
 
-def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False, local_extrema_period=5, FTD_DD=False, save=False):
+def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False, local_extrema_period=5, FTD_DD=False, detect_exhaustion=False, save=False):
     """
     Visualize the closing price history of a stock with optional technical indicators.
 
@@ -27,6 +27,7 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
     - local_extrema (bool, optional): Whether to identify and plot local extrema. Default is False.
     - local_extrema_period (int, optional): The period used for calculating local extrema. Default is 5.
     - FTD_DD (bool, optional): Whether to plot Follow-Through Days (FTD) and Distribution Days (DD). Default is False.
+    - detect_exhaustion (bool, optional): Whether to plot exhaustion detection markers. Default is False.
     - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
 
     Returns:
@@ -98,14 +99,18 @@ def plot_close(stock, df, show=120, sma=True, MVP_VCP=True, local_extrema=False,
             ax1.scatter(df.index[df["MVP"] == "MVP"], df["Close"][df["MVP"] == "MVP"], marker="^", edgecolor="black", facecolors="green", label="MVP")
             ax1.scatter(df.index[df["VCP"] == True], df["Close"][df["VCP"] == True], marker=">", edgecolor="black", facecolors="orange", label="VCP")
 
-        # Plot FTDs and DDs if requested
+        # Plot FTDs and Distribution Days (DD) if requested
         if FTD_DD and all(col in df.columns for col in ["FTD", "DD"]):
             ax1.scatter(df.index[df["FTD"]], df["Low"][df["FTD"]] * 0.98, marker="x", color="green", label="FTD")
-            ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 0.98, marker="x", color="red", label="DD")
+            ax1.scatter(df.index[df["DD"]], df["Low"][df["DD"]] * 1.02, marker="x", color="red", label="DD")
             # Plot multiple FTDs and DDs if columns exist
             if all(col in df.columns for col in ["Multiple FTDs", "Multiple DDs"]):
-                ax1.scatter(df.index[df["Multiple FTDs"]], df["Low"][df["Multiple FTDs"]] * 0.96, marker="^", color="green", label="Multiple FTDs")
-                ax1.scatter(df.index[df["Multiple DDs"]], df["Low"][df["Multiple DDs"]] * 0.96, marker="v", color="red", label="Multiple DDs")
+                ax1.scatter(df.index[df["Multiple FTDs"]], df["Low"][df["Multiple FTDs"]] * 0.98, marker="^", color="green", label="Multiple FTDs")
+                ax1.scatter(df.index[df["Multiple DDs"]], df["Low"][df["Multiple DDs"]] * 1.02, marker="v", color="red", label="Multiple DDs")
+
+        # Plot exhaustion detection markers if requested
+        if detect_exhaustion and "Exhaustion" in df.columns:
+            ax1.scatter(df.index[df["Exhaustion"]], df["High"][df["Exhaustion"]] * 1.02, marker="v", color="#003300", label="Exhaustion")
 
         # Plot SMAs if requested, ensuring they are drawn below the candlesticks
         periods = [5, 10, 20, 50, 200]
@@ -1265,133 +1270,6 @@ def plot_rrg(items, item_dict, index_df, region, type, points=8, interval=5, sav
         filename = os.path.join(figure_folder, f"{region.lower()}{type}rrg.png")
         plt.savefig(filename, dpi=300)
 
-    # Show the plot
-    plt.show()
-
-def plot_industry_performance(end_date, index_name, index_dict, return_periods=[20, 50, 252], period=252, RS=90, all_stocks=True, save=False):
-    """
-    Plot the average performance trends of stocks grouped by industry over a specified period.
-
-    Parameters:
-    - end_date (str): The end date for the data in 'YYYY-MM-DD' format.
-    - index_name (str): Name of the index being analysed.
-    - index_dict (dict): Dictionary mapping index symbols to their respective names.
-    - return_periods (list, optional): List of periods for which to calculate returns. Default is [20, 50, 252].
-    - period (int, optional): The lookback period for stock selection. Default is 252.
-    - RS (int, optional): Relative strength threshold. Default is 90.
-    - all_stocks (bool): Flag indicating whether to include all stocks from the market.
-    - save (bool, optional): Whether to save the plot as a PNG file. Default is False.
-
-    Returns:
-    - None: Generates a plot showing average industry performance trends over time.
-    """
-
-    # Define the result folder and the figure folder
-    result_folder = "Result"
-    figure_folder = os.path.join(result_folder, "Figure")
-
-    # Get the infix for file naming
-    infix = get_infix(index_name, index_dict, all_stocks)
-    
-    # Format the end date for use in filenames
-    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
-
-    # Define the folder path where results will be stored
-    folder_path = os.path.join(result_folder, f"{end_date_fmt}")
-
-    # Define the filename for the Excel file containing screened stocks
-    filename = os.path.join(folder_path, f"{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")
-    
-    # Read the data of the screened stocks from the Excel file
-    try:
-        df = pd.read_excel(filename)
-    except FileNotFoundError:
-        print(f"File not found: {filename}. Please run the stock screening function first.")
-        return
-
-    # Group stocks by industry
-    industry_groups = df.groupby("Industry")
-    
-    # Dictionary to store industry returns for different periods
-    industry_returns = {return_period: {} for return_period in return_periods}
-
-    # Process each industry
-    for industry, group in industry_groups:
-        stocks = group["Stock"].tolist()
-        
-        # List to store normalized prices for all stocks in industry
-        stock_prices = []
-        
-        # Get price data for each stock in the industry
-        for stock in stocks:
-            try:
-                stock_df = get_df(stock, end_date)
-                stock_df = stock_df[-period:]
-
-                # Normalize to starting price
-                normalized_prices = (stock_df["Close"] / stock_df["Close"].iloc[0]) * 100
-                stock_prices.append(normalized_prices)
-                    
-            except Exception as e:
-                print(f"Error processing {stock}: {e}")
-                continue
-        
-        # Calculate average performance for the industry
-        if stock_prices:
-            # Convert to DataFrame and calculate industry average
-            industry_df = pd.DataFrame(stock_prices).T
-            industry_avg = industry_df.mean(axis=1)
-            
-            # Calculate returns for different periods
-            for return_period in return_periods:
-                if len(industry_avg) >= return_period:
-                    start_price = industry_avg.iloc[-return_period]
-                    end_price = industry_avg.iloc[-1]
-                    industry_returns[return_period][industry] = ((end_price / start_price) - 1) * 100
-
-    # Get all unique industries and sort them
-    all_industries = sorted(set().union(*[period_data.keys() for period_data in industry_returns.values()]))
-    
-    # Create subplots for bar plots
-    fig, axes = plt.subplots(len(return_periods), 1, figsize=(10, 10), sharex=True)
-    
-    # Handle single subplot case
-    if len(return_periods) == 1:
-        axes = [axes]
-
-    for i, return_period in enumerate(return_periods):
-        ax = axes[i]
-        
-        # Get returns for each industry, filling with 0 if not available
-        returns = [industry_returns[return_period].get(industry, 0) for industry in all_industries]
-        
-        # Create bar colours based on performance
-        bar_colours = ["green" if x > 0 else "red" for x in returns]
-
-        # Create bar plot
-        bars = ax.bar(range(len(all_industries)), returns, color=bar_colours, alpha=0.7)
-        
-        ax.set_xticks(range(len(all_industries)))
-        ax.set_xticklabels(all_industries, rotation=45, ha='right', fontsize=10)
-        ax.set_ylabel("Return (%)")
-        ax.set_title(f"{return_period}-Day Performance")
-        ax.axhline(y=0, color="black", linestyle="-", linewidth=0.8)
-        ax.grid(True, alpha=0.3, axis='y')
-    
-    # Set the main title
-    plt.suptitle("Industry Performance Comparison", fontsize=16, y=0.98)
-    
-    # Set x-axis label only for the bottom subplot
-    axes[-1].set_xlabel("Industry", fontsize=12)
-    
-    # Adjust layout
-    plt.tight_layout()
-    
-    # Save the plot
-    if save:
-        performance_filename = os.path.join(figure_folder, f"{infix}industryperformance.png")
-        plt.savefig(performance_filename, dpi=300, bbox_inches="tight")
-    
     # Show the plot
     plt.show()
 

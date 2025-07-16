@@ -119,6 +119,29 @@ ftdDdPeriod = input.int(title='FTD/DD Period', defval=20, minval=1, group='FTD &
 // Calculate volume moving average
 volumeMA = ta.sma(volume, volumePeriod)
 
+// Exhaustion detection settings
+exhaustionPricePeriod = input.int(title='Exhaustion Price Period', defval=20, minval=1, group='Exhaustion')
+exhaustionSdThreshold = input.float(title='Exhaustion SD Threshold', defval=1.0, minval=0.1, group='Exhaustion')
+
+// Calculate percent change
+percentChange = ta.change(close) / close[1]
+
+// Calculate rolling mean and standard deviation of percent change
+percentChangeMean = ta.sma(percentChange, exhaustionPricePeriod)
+percentChangeStd = ta.stdev(percentChange, exhaustionPricePeriod)
+
+// Calculate percent change z-score
+percentChangeZScore = percentChangeStd != 0 ? (percentChange - percentChangeMean) / percentChangeStd : 0
+
+// Calculate exhaustion volume moving average
+exhaustionVolumeMA = ta.sma(volume, volumePeriod)
+
+// Detect exhaustion days
+isExhaustion = volume > exhaustionVolumeMA and percentChangeZScore > exhaustionSdThreshold
+
+// Plot exhaustion as inverted dark green triangle
+plotshape(isExhaustion, title='Exhaustion', style=shape.triangledown, location=location.abovebar, color=color.rgb(0, 100, 0), size=size.small, force_overlay=true)
+
 // Calculate FTD (Follow-Through Day)
 isFTD = close > close[1] * (1 + ftdThreshold) and volume > volume[1] and volume > volumeMA
 

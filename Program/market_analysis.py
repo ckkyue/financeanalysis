@@ -266,7 +266,6 @@ def main():
     if screen_us:
         # Plot selected US sector/industry charts
         plot_sector_industry_selected(current_date, "^GSPC", index_dict, RS=90, all_stocks=all_stocks, save=True)
-        plot_industry_performance(current_date, index_name, index_dict, RS=90, all_stocks=all_stocks, save=True)
         current_date = modify_current_date(start, "^GSPC")
         excel_filename = get_excel_filename(current_date, "^GSPC", index_dict, period_long, 90, all_stocks, result_folder)
         screen_excel(excel_filename, us_sector_excel_classification)

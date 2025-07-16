@@ -712,6 +712,44 @@ def FTD_DD(data, volume_period=50, ftd_threshold=0.015, dd_threshold=0.002, ftd_
 
     return data
 
+def detect_exhaustion(data, volume_period=50, price_period=20, sd_threshold=1, col="Close"):
+    """
+    Detect exhaustion days based on volume and price movement criteria.
+
+    Parameters:
+    - data (DataFrame): DataFrame containing stock data.
+    - volume_period (int): The number of periods for volume SMA calculation. Default is 50.
+    - price_period (int): The number of periods for price change analysis. Default is 20.
+    - sd_threshold (float): The standard deviation threshold for price increase. Default is 1.
+    - col (str): The column name to calculate exhaustion on. Default is "Close".
+
+    Returns:
+    - DataFrame: The DataFrame with added exhaustion detection columns.
+    """
+    
+    data_copy = data.copy()
+    
+    # Calculate volume SMA
+    data_copy[f"Volume SMA {volume_period}"] = SMA(data_copy, volume_period, col="Volume")
+    
+    # Calculate percent change
+    data_copy["Percent Change"] = data_copy[col].pct_change()
+    
+    # Calculate rolling mean and standard deviation of percent change
+    data_copy[f"Percent Change Mean {price_period}"] = data_copy["Percent Change"].rolling(window=price_period).mean()
+    data_copy[f"Percent Change SD {price_period}"] = data_copy["Percent Change"].rolling(window=price_period).std()
+
+    # Calculate percent change z-score
+    data_copy["Percent Change Z-Score"] = (data_copy["Percent Change"] - data_copy[f"Percent Change Mean {price_period}"]) / data_copy[f"Percent Change SD {price_period}"]
+
+    # Detect exhaustion days
+    data["Exhaustion"] = (data_copy["Volume"] > data_copy[f"Volume SMA {volume_period}"]) & (data_copy["Percent Change Z-Score"] > sd_threshold)
+
+    # Add the calculated columns to the original DataFrame
+    data["Percent Change Z-Score"] = data_copy["Percent Change Z-Score"]
+
+    return data
+
 def get_local_extrema(data, col_min="Low", col_max="High", period=5):
     """
     Locate local minima and maxima in the given data.
@@ -919,6 +957,7 @@ def add_indicator(data):
         FTD_DD(data)
         PVT(data)
         data[f"Volume SMA 50"] = SMA(data, 50, col="Volume")
+        data = detect_exhaustion(data)
 
     # Price-based moving averages
     periods = [5, 10, 20, 50, 100, 200]
