@@ -2,3 +2,4 @@
 *.jpg
 *.jpeg
 *.csv
+.DS_Store
