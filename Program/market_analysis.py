@@ -31,6 +31,109 @@ def classify(rs_ratio, rs_momentum):
     else:
         return "Lagging"
 
+def _get_cell_styles():
+    """Define and return cell styles for Excel formatting."""
+    return {
+        "yellow_fill": PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid"),
+        "red_fill": PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid"),
+        "orange_fill": PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid"),
+        "red_font": Font(color="FF0000"),
+        "green_font": Font(color="008000"),
+        "red_top_border": Border(top=Side(style="thin", color="FF0000"))
+    }
+
+def _get_column_indices(worksheet):
+    """Extract column indices from the header row."""
+    header_row = [str(cell.value) if cell.value is not None else "" for cell in worksheet[1]]
+    
+    column_mapping = {
+        "Stock": "stock",
+        "Beta": "beta", 
+        "Close": "close",
+        "Volatility 20 Z-Score": "vol20",
+        "Volatility 60 Z-Score": "vol60",
+        "SMA 20": "sma20",
+        "MVP": "mvp",
+        "VCP": "vcp",
+        "Sector": "sector"
+    }
+    
+    col_idx = {}
+    for i, val in enumerate(header_row):
+        if val in column_mapping:
+            col_idx[column_mapping[val]] = i
+        elif val.startswith("Market Cap (B"):
+            col_idx["market_cap"] = i
+    
+    return col_idx
+
+def _apply_price_formatting(cells, styles):
+    """Apply red font formatting if Close < SMA 20."""
+    stock_cell, close_cell, sma20_cell = cells
+    try:
+        if (close_cell.value is not None and sma20_cell.value is not None and 
+            float(close_cell.value) < float(sma20_cell.value)):
+            stock_cell.font = styles["red_font"]
+    except (ValueError, TypeError):
+        pass
+
+def _apply_beta_formatting(beta_cell, styles):
+    """Apply red font formatting for high beta values."""
+    try:
+        if beta_cell.value is not None and float(beta_cell.value) > 2:
+            beta_cell.font = styles["red_font"]
+    except (ValueError, TypeError):
+        pass
+
+def _apply_volatility_formatting(vol_cells, styles):
+    """Apply color formatting for volatility z-score cells."""
+    for cell in vol_cells:
+        try:
+            val = float(cell.value)
+            if val > 2:
+                cell.font = styles["red_font"]
+            elif val < -1:
+                cell.font = styles["green_font"]
+        except (ValueError, TypeError):
+            pass
+
+def _apply_sector_formatting(sector_cell, sector_classifications, styles):
+    """Apply sector classification formatting."""
+    leading, improving, weakening, lagging = sector_classifications
+    sector_val = sector_cell.value
+    
+    if sector_val in leading or sector_val in improving:
+        sector_cell.fill = styles["yellow_fill"]
+    elif sector_val in lagging or sector_val in weakening:
+        sector_cell.fill = styles["red_fill"]
+
+def _apply_special_formatting(mvp_cell, vcp_cell, styles):
+    """Apply MVP and VCP specific formatting."""
+    if mvp_cell.value == "MVP":
+        mvp_cell.font = styles["green_font"]
+    
+    if vcp_cell.value is True:
+        vcp_cell.fill = styles["orange_fill"]
+
+def _apply_market_cap_border(stock_cell, market_cap_cell, styles, red_border_applied):
+    """Apply red top border for first stock with market cap < 10B."""
+    if red_border_applied or market_cap_cell is None:
+        return red_border_applied
+    
+    try:
+        if float(market_cap_cell.value) < 10:
+            stock_cell.border = Border(
+                top=styles["red_top_border"].top,
+                left=stock_cell.border.left,
+                right=stock_cell.border.right,
+                bottom=stock_cell.border.bottom
+            )
+            return True
+    except (ValueError, TypeError):
+        pass
+    
+    return red_border_applied
+
 def screen_excel(excel_filename, sector_excel_classification):
     """
     Screen stocks from an Excel file and apply formatting based on specified criteria.
@@ -39,111 +142,50 @@ def screen_excel(excel_filename, sector_excel_classification):
     - excel_filename (str): Path to the Excel file containing stock data.
     - sector_excel_classification (dict): Dictionary mapping sector classifications to sector names.
     """
-
     # Get classified sectors
-    leading = set(sector_excel_classification.get("Leading", []))
-    improving = set(sector_excel_classification.get("Improving", []))
-    weakening = set(sector_excel_classification.get("Weakening", []))
-    lagging = set(sector_excel_classification.get("Lagging", []))
-
-    # Load workbook and worksheet
+    sector_sets = {
+        key: set(sector_excel_classification.get(key, []))
+        for key in ["Leading", "Improving", "Weakening", "Lagging"]
+    }
+    
+    # Load workbook and get styles
     wb = openpyxl.load_workbook(excel_filename)
     ws = wb.active
-
-    # Define cell styles
-    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-    orange_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
-    red_font = Font(color="FF0000")
-    green_font = Font(color="008000")
-    red_top_border = Border(top=Side(style="thin", color="FF0000"))
-
-    # Find header columns by name
-    header_row = [str(cell.value) if cell.value is not None else "" for cell in ws[1]]
-    col_idx = {}
-    for i, val in enumerate(header_row):
-        if val == "Stock":
-            col_idx["stock"] = i
-        elif val == "Close":
-            col_idx["close"] = i
-        elif val == "Volatility 20 Z-Score":
-            col_idx["vol20"] = i
-        elif val == "Volatility 60 Z-Score":
-            col_idx["vol60"] = i
-        elif val == "SMA 20":
-            col_idx["sma20"] = i
-        elif val == "MVP":
-            col_idx["mvp"] = i
-        elif val == "VCP":
-            col_idx["vcp"] = i
-        elif val == "Sector":
-            col_idx["sector"] = i
-        elif val.startswith("Market Cap (B"):
-            col_idx["market_cap"] = i
-
-    # Flag to apply red border only once
+    styles = _get_cell_styles()
+    col_idx = _get_column_indices(ws)
+    
+    # Track red border application
     red_border_applied = False
-
-    # Iterate over data rows
+    
+    # Process each data row
     for row in ws.iter_rows(min_row=2):
-        # Get relevant cells
-        stock_cell = row[col_idx["stock"]]
-        close_cell = row[col_idx["close"]]
-        vol20_cell = row[col_idx["vol20"]]
-        vol60_cell = row[col_idx["vol60"]]
-        sma20_cell = row[col_idx["sma20"]]
-        mvp_cell = row[col_idx["mvp"]]
-        vcp_cell = row[col_idx["vcp"]]
-        sector_cell = row[col_idx["sector"]]
-        market_cap_cell = row[col_idx["market_cap"]] if "market_cap" in col_idx else None
+        # Extract cells using column indices
+        cells = {key: row[idx] for key, idx in col_idx.items()}
+        
+        # Apply various formatting rules
+        _apply_price_formatting(
+            (cells["stock"], cells["close"], cells["sma20"]), styles
+        )
 
-        # Apply red font if Close < SMA 20
-        try:
-            if close_cell.value is not None and sma20_cell.value is not None and float(close_cell.value) < float(sma20_cell.value):
-                stock_cell.font = red_font
-        except Exception:
-            pass
+        _apply_beta_formatting(cells["beta"], styles)
 
-        # Color volatility z-score cells
-        for cell in [vol20_cell, vol60_cell]:
-            try:
-                val = float(cell.value)
-                if val > 2:
-                    cell.font = red_font
-                elif val < -1:
-                    cell.font = green_font
-            except Exception:
-                pass
+        _apply_volatility_formatting(
+            [cells["vol20"], cells["vol60"]], styles
+        )
+        
+        _apply_sector_formatting(
+            cells["sector"],
+            (sector_sets["Leading"], sector_sets["Improving"],
+             sector_sets["Weakening"], sector_sets["Lagging"]),
+            styles
+        )
 
-        # Highlight sector cell based on classification
-        sector_val = sector_cell.value
-        if sector_val in leading or sector_val in improving:
-            sector_cell.fill = yellow_fill
-        elif sector_val in lagging or sector_val in weakening:
-            sector_cell.fill = red_fill
-
-        # Apply green font to MVP cell if value is "MVP"
-        if mvp_cell.value == "MVP":
-            mvp_cell.font = green_font
-
-        # Apply orange fill to VCP cell if value is True
-        if vcp_cell.value is True:
-            vcp_cell.fill = orange_fill
-
-        # Apply red top border to the first stock with market cap < 10B
-        if not red_border_applied and market_cap_cell is not None:
-            try:
-                if float(market_cap_cell.value) < 10:
-                    stock_cell.border = Border(
-                        top=red_top_border.top,
-                        left=stock_cell.border.left,
-                        right=stock_cell.border.right,
-                        bottom=stock_cell.border.bottom
-                    )
-                    red_border_applied = True
-            except Exception:
-                pass
-
+        _apply_special_formatting(cells["mvp"], cells["vcp"], styles)
+        
+        red_border_applied = _apply_market_cap_border(
+            cells["stock"], cells.get("market_cap"), styles, red_border_applied
+        )
+    
     wb.save(excel_filename)
     print(f"Changes made to the Excel file {excel_filename}.")
 
@@ -218,7 +260,7 @@ def main():
     hsi_df = get_df("^HSI", current_date)
 
     # Plot all tickers (indices, US and HK sectors)
-    plot_all = False
+    plot_all = dt.datetime.now().weekday() in [5, 6]  # True if Saturday or Sunday
     if plot_all:
         for ticker in index_names + us_sectors + hk_sectors:
             df = get_df(ticker, current_date)
