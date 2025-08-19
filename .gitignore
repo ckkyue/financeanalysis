@@ -1,5 +1,6 @@
 *.png
 *.jpg
 *.jpeg
-*.csv
+Fundamentals/*.csv
+Price data/*.csv
 .DS_Store
