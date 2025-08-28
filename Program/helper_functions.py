@@ -16,6 +16,7 @@ from tqdm import tqdm
 import tvDatafeed as tv
 from tvDatafeed import Interval
 import yfinance as yf
+import requests
 
 def check_DST(start):
     """
@@ -639,7 +640,15 @@ def stock_market(end_date, current_date, index_name, all_stocks, bloomberg=False
 
         if end_date == current_date:
             try:
-                tickers_table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+                # Add headers to avoid 403 error
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+                }
+
+                # Use requests with headers
+                url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+                response = requests.get(url, headers=headers)
+                tickers_table = pd.read_html(response.content)[0]
                 tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers_table["Symbol"]]
                 tickers.sort()
                 sp500_df.loc[pd.to_datetime(current_date), "tickers"] = ",".join(tickers)
