@@ -1299,7 +1299,7 @@ def plot_sector_industry_selected(end_date, index_name, index_dict, period=252, 
     infix = get_infix(index_name, index_dict, all_stocks)
     
     # Format the end date for use in filenames
-    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%m-%d-%y")
 
     # Define the folder path where results will be stored
     folder_path = os.path.join(result_folder, f"{end_date_fmt}")

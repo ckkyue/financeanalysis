@@ -576,7 +576,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         df.insert(df.columns.get_loc("Volatility 60 (%)") + 1, "Volatility 60 Z-Score", volatility_60_zscore)
 
         # Format end date for folder naming
-        end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+        end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%m-%d-%y")
 
         # Create a folder for results if it does not exist
         folder = os.path.join(result_folder, f"{end_date_fmt}")
@@ -635,7 +635,7 @@ def create_stock_dict(end_dates, index_name, index_dict, all_stocks, factors, RS
         # Iterate over all end dates except the last one
         for end_date in end_dates[:-1]:
             # Format the end date for file naming
-            end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+            end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%m-%d-%y")
 
             # Define the filename for the screened stocks
             filename = os.path.join(result_folder, f"{end_date_fmt}/{infix}stock_{end_date_fmt}period{period}RS{RS}.xlsx")

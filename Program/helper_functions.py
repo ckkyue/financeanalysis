@@ -502,8 +502,8 @@ def get_excel_filename(end_date, index_name, index_dict, period, RS, all_stocks,
     # Get the infix for file naming
     infix = get_infix(index_name, index_dict, all_stocks)
 
-    # Format the end date to "DD-MM-YY"
-    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%y")
+    # Format the end date to "MM-DD-YY"
+    end_date_fmt = dt.datetime.strptime(end_date, "%Y-%m-%d").strftime("%m-%d-%y")
 
     # Define the folder path for results
     folder_path = os.path.join(result_folder, end_date_fmt)
