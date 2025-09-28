@@ -260,7 +260,7 @@ def main():
     hsi_df = get_df("^HSI", current_date)
 
     # Plot all tickers (indices, US and HK sectors)
-    plot_all = dt.datetime.now().weekday() in [5, 6]  # True if Saturday or Sunday
+    plot_all = dt.datetime.now().weekday() == 5  # True if Saturday
     if plot_all:
         for ticker in index_names + us_sectors + hk_sectors:
             df = get_df(ticker, current_date)
