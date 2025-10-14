@@ -3,6 +3,7 @@ import datetime as dt
 from helper_functions import modify_current_date, get_df, get_excel_filename, stock_market
 import openpyxl
 from openpyxl.styles import Font, PatternFill
+import os
 from pandas import ExcelWriter as EW
 from plot import *
 import scipy.stats as stats
@@ -133,6 +134,16 @@ def _apply_market_cap_border(stock_cell, market_cap_cell, styles, red_border_app
         pass
     
     return red_border_applied
+
+# Helper to plot, build filename and screen if file exists
+def _screen_market(start, current_date, index_name, index_dict, period_long, RS, all_stocks, result_folder, sector_classification):
+    plot_sector_industry_selected(current_date, index_name, index_dict, RS=RS, all_stocks=all_stocks, save=True)
+    cur_date = modify_current_date(start, index_name)
+    excel_filename = get_excel_filename(cur_date, index_name, index_dict, period_long, RS, all_stocks, result_folder)
+    if os.path.exists(excel_filename):
+        screen_excel(excel_filename, sector_classification)
+    else:
+        print(f"Excel file not found, skipping {index_name} screen: {excel_filename}")
 
 def screen_excel(excel_filename, sector_excel_classification):
     """
@@ -306,20 +317,12 @@ def main():
     # Screen US stocks and apply Excel formatting
     screen_us = True
     if screen_us:
-        # Plot selected US sector/industry charts
-        plot_sector_industry_selected(current_date, "^GSPC", index_dict, RS=90, all_stocks=all_stocks, save=True)
-        current_date = modify_current_date(start, "^GSPC")
-        excel_filename = get_excel_filename(current_date, "^GSPC", index_dict, period_long, 90, all_stocks, result_folder)
-        screen_excel(excel_filename, us_sector_excel_classification)
+        _screen_market(start, current_date, "^GSPC", index_dict, period_long, 90, all_stocks, result_folder, us_sector_excel_classification)
 
     # Screen HK stocks and apply Excel formatting
     screen_hk = True
     if screen_hk:
-        # Plot selected HK sector/industry charts
-        plot_sector_industry_selected(current_date, "^HSI", index_dict, RS=80, all_stocks=all_stocks, save=True)
-        current_date = modify_current_date(start, "^HSI")
-        excel_filename = get_excel_filename(current_date, "^HSI", index_dict, period_long, 80, all_stocks, result_folder)
-        screen_excel(excel_filename, hk_sector_excel_classification)
+        _screen_market(start, current_date, "^HSI", index_dict, period_long, 80, all_stocks, result_folder, hk_sector_excel_classification)
 
     # Market breadth analysis and plots for S&P 500
     current_date = modify_current_date(start, "^GSPC")
