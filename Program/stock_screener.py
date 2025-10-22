@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
 from pandas import ExcelWriter as EW
+from plot import *
 import os
 from sklearn.preprocessing import MinMaxScaler
 from technicals import *
@@ -704,7 +705,7 @@ def main():
     index_dict = {"^HSI": "HSI", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
     # Create the end dates
-    # end_dates = generate_end_dates(end_date="2024-12-20", years=7, interval="1w")
+    end_dates = generate_end_dates(end_date="2024-12-20", years=7, interval="1w")
 
     # Stock selection for different combinations of index names and stock selection
     all_stocks_options = [True, False]
