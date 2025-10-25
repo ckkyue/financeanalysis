@@ -365,7 +365,11 @@ def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownlo
 
     else:
         # Load existing file (common for both methods)
-        df = pd.read_csv(filename)
+        try:
+            df = pd.read_csv(filename)
+        except pd.errors.EmptyDataError:
+            print(f"WARNING: No data in {filename}. Returning None.")
+            return None
         if method == "tradingview":
             df.set_index(pd.to_datetime(df["Datetime"]), inplace=True)
             df.index.name = "Datetime"
