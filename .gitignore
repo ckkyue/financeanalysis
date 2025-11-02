@@ -1,6 +1,42 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.coverage*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*.nbconvert/
+
+# Logs and temp files
+*.log
+*.tmp
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Configuration secrets
+.env
+*.env
+
+# Media
 *.png
 *.jpg
 *.jpeg
+
+# Data exports
 Fundamentals/*.csv
 Price data/*.csv
-.DS_Store
+*.json
