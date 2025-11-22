@@ -589,7 +589,7 @@ def sp500_bloomberg_to_csv():
 
                     # Clean up the ticker symbols
                     tickers = [ticker.split(" ")[0] for ticker in tickers]
-                    tickers = [str(ticker).replace(".", "-").replace("^", "-P").replace("/", "-") for ticker in tickers]
+                    tickers = [_normalize_ticker(ticker) for ticker in tickers]
 
                     # Add to the DataFrame
                     sp500_bloomberg_df = sp500_bloomberg_df.append({"date": date_str, "tickers": ",".join(tickers)}, ignore_index=True)
@@ -599,6 +599,81 @@ def sp500_bloomberg_to_csv():
 
         # Save the DataFrame to a CSV file
         sp500_bloomberg_df.to_csv(bloomberg_file, index=False)
+
+def _get_hkex_tickers(base_path, all_stocks):
+    """Retrieve HKEX tickers based on all_stocks flag."""
+    if all_stocks:
+        hkex_df = pd.read_excel(os.path.join(base_path, "ListOfSecurities.xlsx"), skiprows=2)
+        tickers = hkex_df.loc[hkex_df["Category"] == "Equity", "Stock Code"].apply(lambda x: f"{int(x):04d}.HK").tolist()
+    else:
+        hsi_df = pd.read_csv(os.path.join(base_path, "constituents-hsi.csv"))
+        tickers = hsi_df["Symbol"].tolist()
+    return sorted(tickers)
+
+def _get_sp500_tickers(base_path, end_date, current_date, bloomberg):
+    """Retrieve S&P 500 tickers from historical data or Wikipedia."""
+    sp500_bloomberg_file = os.path.join(base_path, "sp_500_historical_components_bloomberg.csv")
+    sp500_hist_file = os.path.join(base_path, "sp_500_historical_components.csv")
+
+    # Determine which data source to use
+    if end_date < "2008-01-01" or bloomberg:
+        if not os.path.exists(sp500_bloomberg_file):
+            sp500_bloomberg_to_csv()
+        sp500_file = sp500_bloomberg_file
+    else:
+        sp500_file = sp500_hist_file
+
+    # Load historical data
+    sp500_df = pd.read_csv(sp500_file)
+    sp500_df["date"] = pd.to_datetime(sp500_df["date"])
+    sp500_df.set_index("date", inplace=True)
+
+    # Update with current data from Wikipedia if end_date is current_date
+    if end_date == current_date:
+        _update_sp500_from_wikipedia(sp500_df, current_date, sp500_hist_file)
+
+    # Extract tickers for the end_date
+    tickers = sp500_df[sp500_df.index <= end_date]["tickers"].iloc[-1].split(",")
+    return sorted([_normalize_ticker(ticker) for ticker in tickers])
+
+def _update_sp500_from_wikipedia(sp500_df, current_date, sp500_hist_file):
+    """Update S&P 500 tickers from Wikipedia for the current date."""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        }
+        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+        response = requests.get(url, headers=headers)
+        
+        tickers_table = pd.read_html(response.content)[1]
+        if "Symbol" not in tickers_table.columns:
+            tickers_table = pd.read_html(response.content)[0]
+        
+        tickers = [_normalize_ticker(ticker) for ticker in tickers_table["Symbol"]]
+        tickers.sort()
+
+        # Update DataFrame and save
+        sp500_df.loc[pd.to_datetime(current_date), "tickers"] = ",".join(tickers)
+        sp500_df.to_csv(sp500_hist_file)
+    except Exception as e:
+        print(f"Warning: Could not update S&P 500 tickers from Wikipedia: {e}. Using existing data.")
+
+def _get_nasdaq_composite_tickers():
+    """Retrieve NASDAQ Composite tickers using yahoo_fin."""
+    from yahoo_fin import stock_info as si
+    tickers = [_normalize_ticker(ticker) for ticker in si.tickers_nasdaq()]
+    return sorted(tickers)
+
+def _get_nasdaq_all_tickers(base_path):
+    """Retrieve all NASDAQ tickers from CSV file."""
+    nasdaq_file = os.path.join(base_path, "nasdaq.csv")
+    tickers_table = pd.read_csv(nasdaq_file)
+    tickers = [_normalize_ticker(ticker) for ticker in tickers_table["Symbol"]]
+    return sorted(tickers)
+
+def _normalize_ticker(ticker):
+    """Normalize ticker symbols by replacing special characters."""
+    return str(ticker).replace(".", "-").replace("^", "-P").replace("/", "-")
 
 def stock_market(end_date, current_date, index_name, all_stocks, bloomberg=False):
     """
@@ -615,70 +690,25 @@ def stock_market(end_date, current_date, index_name, all_stocks, bloomberg=False
     - list: A sorted list of stock tickers.
     """
 
-    # Define the base path for data files
     base_path = "Constituents data"
 
     # HKEX (Hong Kong Stock Exchange)
     if index_name == "^HSI":
-        if all_stocks:
-            hkex_df = pd.read_excel(os.path.join(base_path, "ListOfSecurities.xlsx"), skiprows=2)
-            tickers = hkex_df.loc[hkex_df["Category"] == "Equity", "Stock Code"].apply(lambda x: f"{int(x):04d}.HK").tolist()
-        else:
-            hsi_df = pd.read_csv(os.path.join(base_path, "constituents-hsi.csv"))
-            tickers = hsi_df["Symbol"].tolist()
+        return _get_hkex_tickers(base_path, all_stocks)
 
     # S&P 500
     elif not all_stocks and index_name == "^GSPC":
-        sp500_bloomberg_file = os.path.join(base_path, "sp_500_historical_components_bloomberg.csv")
-        sp500_hist_file = os.path.join(base_path, "sp_500_historical_components.csv")
-        if end_date < "2008-01-01" or bloomberg:
-            # Use Bloomberg data if end_date is before 2008 or bloomberg is True
-            if not os.path.exists(sp500_bloomberg_file):
-                sp500_bloomberg_to_csv()
-            sp500_df = pd.read_csv(sp500_bloomberg_file)
-        else:
-            sp500_df = pd.read_csv(sp500_hist_file)
-
-        sp500_df["date"] = pd.to_datetime(sp500_df["date"])
-        sp500_df.set_index("date", inplace=True)
-
-        if end_date == current_date:
-            try:
-                # Add headers to avoid 403 error
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-                }
-
-                # Use requests with headers
-                url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-                response = requests.get(url, headers=headers)
-                tickers_table = pd.read_html(response.content)[0]
-                tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers_table["Symbol"]]
-                tickers.sort()
-                sp500_df.loc[pd.to_datetime(current_date), "tickers"] = ",".join(tickers)
-                sp500_df.to_csv(sp500_hist_file)
-            except Exception as e:
-                print(f"Warning: Could not update S&P 500 tickers from Wikipedia due to network error: {e}. Skipping update.")
-
-        tickers = sp500_df[sp500_df.index <= end_date]["tickers"].iloc[-1].split(",")
-        tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers]
-        tickers.sort()
+        return _get_sp500_tickers(base_path, end_date, current_date, bloomberg)
 
     # NASDAQ Composite
     elif index_name == "^IXIC":
-        from yahoo_fin import stock_info as si
+        return _get_nasdaq_composite_tickers()
 
-        tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in si.tickers_nasdaq()]
-        tickers.sort()
-
-    # NASDAQ
+    # NASDAQ (all stocks)
     elif all_stocks and index_name == "^GSPC":
-        nasdaq_file = os.path.join(base_path, "nasdaq.csv")
-        tickers_table = pd.read_csv(nasdaq_file)
-        tickers = [str(t).replace(".", "-").replace("^", "-P").replace("/", "-") for t in tickers_table["Symbol"]]
-        tickers.sort()
+        return _get_nasdaq_all_tickers(base_path)
 
-    return tickers
+    return []
 
 def get_infix(index_name, index_dict, all_stocks):
     """
