@@ -138,8 +138,7 @@ def _apply_market_cap_border(stock_cell, market_cap_cell, styles, red_border_app
 # Helper to plot, build filename and screen if file exists
 def _screen_market(start, current_date, index_name, index_dict, period_long, RS, all_stocks, result_folder, sector_classification):
     plot_sector_industry_selected(current_date, index_name, index_dict, RS=RS, all_stocks=all_stocks, save=True)
-    cur_date = modify_current_date(start, index_name)
-    excel_filename = get_excel_filename(cur_date, index_name, index_dict, period_long, RS, all_stocks, result_folder)
+    excel_filename = get_excel_filename(current_date, index_name, index_dict, period_long, RS, all_stocks, result_folder)
     if os.path.exists(excel_filename):
         screen_excel(excel_filename, sector_classification)
     else:
