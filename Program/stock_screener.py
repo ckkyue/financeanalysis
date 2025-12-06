@@ -482,7 +482,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
 
     # Remove end dates for which files already exist
     for end_date in end_dates.copy():
-        filename = get_excel_filename(end_date, index_name, index_dict, period_long, RS, all_stocks, result_folder)
+        filename = get_excel_filename(end_date, index_name, index_dict, period_long, RS, all_stocks)
         if os.path.isfile(filename):
             end_dates.remove(end_date)
 
@@ -585,7 +585,7 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
             os.makedirs(folder)
 
         # Export results to an Excel file
-        filename = get_excel_filename(end_date, index_name, index_dict, period_long, RS, all_stocks, result_folder)
+        filename = get_excel_filename(end_date, index_name, index_dict, period_long, RS, all_stocks)
         writer = EW(filename)
         df.to_excel(writer, sheet_name="Sheet1", index=False)
         writer._save()
@@ -709,7 +709,7 @@ def main():
 
     # Stock selection for different combinations of index names and stock selection
     all_stocks_options = [True, False]
-    index_names = ["^HSI", "^GSPC"]
+    index_names = ["^GSPC", "^HSI"]
     for all_stock_option, index_name in tqdm(itertools.product(all_stocks_options, index_names), total=len(all_stocks_options) * len(index_names), desc="HK/US stock selections"):
         # Set the RS threshold based on the index name
         RS = 90 if index_name == "^GSPC" else 80

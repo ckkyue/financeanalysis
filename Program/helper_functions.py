@@ -486,7 +486,7 @@ def get_volume5m_data(df, date, sma_period=50):
         "sma_hours": sma_hours,
     }
 
-def get_excel_filename(end_date, index_name, index_dict, period, RS, all_stocks, result_folder):
+def get_excel_filename(end_date, index_name, index_dict, period, RS, all_stocks, result_folder="Result"):
     """
     Generate the filename for an Excel file based on the provided parameters.
 
@@ -497,7 +497,7 @@ def get_excel_filename(end_date, index_name, index_dict, period, RS, all_stocks,
     - period (str): The period label to be included in the file name.
     - RS (float): The relative strength threshold to filter stocks.
     - all_stocks (bool): Flag indicating whether to include all stocks from the market. When True, all eligible stocks are included; otherwise, only a subset is used.
-    - result_folder (str): The directory where the resulting Excel file will be saved.
+    - result_folder (str): The directory where the resulting Excel file will be saved. Default is "Result".
 
     Returns:
     - str: The complete Excel filename including the path.
