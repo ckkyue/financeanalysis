@@ -221,6 +221,7 @@ def main():
     
     # Modify the current date
     current_date = modify_current_date(start, index_name)
+    current_date = "2025-12-20"
 
     # US Sectors
     us_sectors = ["XLC", "XLY", "XLP", "XLE", "XLF", "XLV", 
