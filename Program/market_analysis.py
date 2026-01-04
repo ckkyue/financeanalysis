@@ -221,7 +221,6 @@ def main():
     
     # Modify the current date
     current_date = modify_current_date(start, index_name)
-    current_date = "2025-12-20"
 
     # US Sectors
     us_sectors = ["XLC", "XLY", "XLP", "XLE", "XLF", "XLV", 
@@ -271,7 +270,7 @@ def main():
     hsi_df = get_df("^HSI", current_date)
 
     # Plot all tickers (indices, US and HK sectors)
-    plot_all = dt.datetime.now().weekday() == 5  # True if Saturday
+    plot_all = dt.datetime.now().weekday() == 5 or 6  # Plot all on weekends
     if plot_all:
         for ticker in index_names + us_sectors + hk_sectors:
             df = get_df(ticker, current_date)
