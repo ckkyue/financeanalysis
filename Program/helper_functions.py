@@ -294,6 +294,8 @@ def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownlo
             csv_date = (dt.datetime.strptime(end_date, "%Y-%m-%d") - interval_periods.get(interval, relativedelta(years=40))).strftime("%Y-%m-%d")
             
             df = None
+            fatal_error = False
+
             for attempt in range(1, max_retry + 1):
                 # Rate limit
                 last_call = getattr(get_df, "_yf_last_call", None)
@@ -321,9 +323,13 @@ def get_df(stock, end_date, interval="1d", max_period=False, adj=False, redownlo
                     errors = ["YFInvalidPeriodError", "YFPricesMissingError", "YFTzMissingError"]
                     for error in errors:
                         if error in captured_output:
-                            print(f"{error} for {stock}. Returning None.")
-                            return None
+                            print(f"{error} for {stock}. Aborting further attempts.")
+                            fatal_error = True
+                            break
 
+                    if fatal_error:
+                        break # exit retry loop immediately
+                    
                     if not df.empty:
                         break
                     print(f"Empty DataFrame for {stock} on attempt {attempt}.")
