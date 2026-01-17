@@ -80,12 +80,11 @@ def EMA_replace(SMA_value, EMA_value):
 
     return EMA_value if np.isnan(SMA_value) else SMA_value
 
-def check_conds_tech(index_name, df):
+def check_conds_tech(df):
     """
     Check if the price data meets specified technical conditions based on moving averages.
 
     Parameters:
-    - index_name (str): The name of the index.
     - df (DataFrame): The DataFrame containing price data with 'Close', 'Low', and 'High' columns.
 
     Returns:
@@ -225,30 +224,31 @@ def process_stock(stock, index_name, index_df, end_date, current_date, stock_dfs
         # Get relative strength rating and volume SMA 5 rank
         rs_rating_short = get_rs(stock, rs_volume_df_short)
         rs_rating_long = get_rs(stock, rs_volume_df_long)
-        volume_sma_ranks = get_volume_sma_ranks(stock, rs_volume_df_long)
-        volume_sma5_rank = volume_sma_ranks["Volume SMA 5 Rank"]
-        volume_sma20_rank = volume_sma_ranks["Volume SMA 20 Rank"]
+        # volume_sma_ranks = get_volume_sma_ranks(stock, rs_volume_df_long)
+        # volume_sma5_rank = volume_sma_ranks["Volume SMA 5 Rank"]
+        # volume_sma20_rank = volume_sma_ranks["Volume SMA 20 Rank"]
 
         # Check the technical conditions
-        conds_tech_data = check_conds_tech(index_name, df)
+        conds_tech_data = check_conds_tech(df)
+        conds_tech = True # Override for testing
 
         # Extract relevant technical data
         conds_tech = conds_tech_data["conds_tech"]
         current_close = conds_tech_data["current_close"]
-        SMA_5 = conds_tech_data["SMA 5"]
-        EMA_5 = conds_tech_data["EMA 5"]
-        SMA_20 = conds_tech_data["SMA 20"]
-        EMA_20 = conds_tech_data["EMA 20"]
-        SMA_50 = conds_tech_data["SMA 50"]
-        EMA_50 = conds_tech_data["EMA 50"]
-        SMA_200 = conds_tech_data["SMA 200"]
-        EMA_200 = conds_tech_data["EMA 200"]
+        # SMA_5 = conds_tech_data["SMA 5"]
+        # EMA_5 = conds_tech_data["EMA 5"]
+        # SMA_20 = conds_tech_data["SMA 20"]
+        # EMA_20 = conds_tech_data["EMA 20"]
+        # SMA_50 = conds_tech_data["SMA 50"]
+        # EMA_50 = conds_tech_data["EMA 50"]
+        # SMA_200 = conds_tech_data["SMA 200"]
+        # EMA_200 = conds_tech_data["EMA 200"]
         Low = conds_tech_data["Low"]
         High = conds_tech_data["High"]
 
         # Set conditions based on index name
         cond_t1 = conds_tech_data["cond_t1"]
-        cond_t2 = conds_tech_data["cond_t2"]
+        # cond_t2 = conds_tech_data["cond_t2"]
         cond_t3 = conds_tech_data["cond_t3"]
         cond_t4 = conds_tech_data["cond_t4"]
         cond_t5 = conds_tech_data["cond_t5"]
@@ -281,6 +281,7 @@ def process_stock(stock, index_name, index_df, end_date, current_date, stock_dfs
                     conds_fund = True
                 else:
                     conds_fund, cond_f2, cond_f3 = check_conds_fund(EPS_thisY_growth, EPS_QoQ_growth)
+                    conds_fund = True # Override for testing
                 
                 if conds_fund:
                     # Gather additional stock information
@@ -302,11 +303,11 @@ def process_stock(stock, index_name, index_df, end_date, current_date, stock_dfs
                     
                     # MVP/VCP condition calculations
                     data = MVP_VCP(df)
-                    MVP = data["MVP"].iloc[-1]
+                    # MVP = data["MVP"].iloc[-1]
                     MVP_rating = data["MVP Rating"].iloc[-1]
-                    VCP = data["VCP"].iloc[-1]
-                    pivot_breakout = data["Pivot breakout"].iloc[-1]
-                    volume_shrink = data["Volume shrinking"].iloc[-1]
+                    # VCP = data["VCP"].iloc[-1]
+                    # pivot_breakout = data["Pivot breakout"].iloc[-1]
+                    # volume_shrink = data["Volume shrinking"].iloc[-1]
 
                     # Get the next earning date
                     try:
@@ -321,25 +322,31 @@ def process_stock(stock, index_name, index_df, end_date, current_date, stock_dfs
                         "Stock": stock,
                         "Long-term RS": rs_rating_long,
                         "Short-term RS": rs_rating_short,
-                        "Volume SMA 5 Rank": volume_sma5_rank,
-                        "Volume SMA 20 Rank": volume_sma20_rank,
+                        # "Volume SMA 5 Rank": volume_sma5_rank,
+                        # "Volume SMA 20 Rank": volume_sma20_rank,
                         "Close": round(current_close, 2),
                         "Alpha": alpha,
                         "Beta": beta,
                         "Volatility 20 (%)": round(volatility_20 * 100, 2),
                         "Volatility 60 (%)": round(volatility_60 * 100, 2),
-                        "SMA 5": EMA_replace(SMA_5, EMA_5),
-                        "SMA 20": EMA_replace(SMA_20, EMA_20),
-                        "SMA 50": EMA_replace(SMA_50, EMA_50),
-                        "SMA 50 Slope > 0": cond_t2,
-                        "SMA 200": EMA_replace(SMA_200, EMA_200),
-                        "SMA 5/20 Ratio": round(SMA_5 / SMA_20, 2),
-                        "SMA 20/50 Ratio": round(SMA_20 / SMA_50, 2),
-                        "MVP": MVP,
+                        "cond_t1": cond_t1,
+                        "cond_t3": cond_t3,
+                        "cond_t4": cond_t4,
+                        "cond_t5": cond_t5,
+                        "cond_f2": cond_f2 if index_name != "^HSI" else None,
+                        "cond_f3": cond_f3 if index_name != "^HSI" else None,
+                        # "SMA 5": EMA_replace(SMA_5, EMA_5),
+                        # "SMA 20": EMA_replace(SMA_20, EMA_20),
+                        # "SMA 50": EMA_replace(SMA_50, EMA_50),
+                        # "SMA 50 Slope > 0": cond_t2,
+                        # "SMA 200": EMA_replace(SMA_200, EMA_200),
+                        # "SMA 5/20 Ratio": round(SMA_5 / SMA_20, 2),
+                        # "SMA 20/50 Ratio": round(SMA_20 / SMA_50, 2),
+                        # "MVP": MVP,
                         "MVP Rating": MVP_rating,
-                        "VCP": VCP,
-                        "Pivot Breakout": pivot_breakout,
-                        "Volume Shrinking": volume_shrink,
+                        # "VCP": VCP,
+                        # "Pivot Breakout": pivot_breakout,
+                        # "Volume Shrinking": volume_shrink,
                         "52 Week Low": Low,
                         "52 Week High": High,
                         f"Market Cap (B, {currency})": market_cap,
@@ -565,8 +572,8 @@ def select_stocks(end_dates, current_date, index_name, index_dict,
         # Calculate means and standard deviations for volatility
         volatility_20_mean = df["Volatility 20 (%)"].mean()
         volatility_60_mean = df["Volatility 60 (%)"].mean()
-        volatility_20_sd = df['Volatility 20 (%)'].std()
-        volatility_60_sd = df['Volatility 60 (%)'].std()
+        volatility_20_sd = df["Volatility 20 (%)"].std()
+        volatility_60_sd = df["Volatility 60 (%)"].std()
 
         # Calculate z-scores for volatility
         volatility_20_zscore = (df["Volatility 20 (%)"] - volatility_20_mean) / volatility_20_sd
