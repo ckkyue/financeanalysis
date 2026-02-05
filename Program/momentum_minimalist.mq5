@@ -12,7 +12,7 @@ ma2Type = input.string(title="Long-Term MA Type", defval="SMA", options=["SMA", 
 ma1Color = color.blue
 ma2Color = color.yellow
 
-// Function to Calculate Moving Averages
+// Function: Calculate Moving Averages
 getMovingAverage(src, length, maType) =>
     switch maType
         "SMA"  => ta.sma(src, length)
@@ -48,36 +48,86 @@ hline(10, color=color.red, linewidth=2)
 bgcolor(mmth < 50 ? color.new(color.red, 50) : na)
 
 // Volatility-Adjusted Momentum Inputs
-period_mom_long = 252
-period_mom_short = 21
-period_vol = 60
+period_mom_long = input.int(252, "Long-Term Momentum Lookback (Days)", minval=21, group="Volatility-Adjusted Momentum")
+period_mom_short = input.int(21, "Short-Term Momentum Lookback (Days)", minval=1, group="Volatility-Adjusted Momentum")
+period_vol = input.int(60, "Volatility Lookback (Days)", minval=1, group="Volatility-Adjusted Momentum")
 
-// 252-21 Day Return
-ret_252_21 = (close[period_mom_short] / close[period_mom_long]) - 1.0
+// 252-21 Momentum
+mom = (close[period_mom_short - 1] / close[period_mom_long - 1]) - 1.0
 
 // 60-Day Volatility
 daily_ret = close / close[1] - 1.0
 vol = ta.stdev(daily_ret, period_vol)
-vol_adj_mom = vol != 0 ? ret_252_21 / vol : na
+vol_adj_mom = vol != 0 ? mom / vol : na
 
-// Weekly Z-Score Inputs
-period_week_zscore = input.int(52, "Lookback Period (Weeks)", minval=2, group="Outlier Detection")
+// Weekly Return Z-Score Inputs
+period_week_zscore = input.int(52, "Z-Score Lookback (Weeks)", minval=2, group="Weekly Return Z-Score")
+days_per_week = input.int(5, "Days Per Week", minval=1, group="Weekly Return Z-Score")
 
-// Function to Calculate Weekly Z-Score
-calc_weekly_stats() =>
-    // Calculate Weekly Return
-    weekly_ret = (close / close[1]) - 1.0
-    
-    // Compute Mean and Standard Deviation
-    mean_ret = ta.sma(weekly_ret, period_week_zscore)
-    std_ret  = ta.stdev(weekly_ret, period_week_zscore)
-    
-    // Compute Current Z-Score
-    z = std_ret != 0 ? (weekly_ret - mean_ret) / std_ret : 0.0
+// Function: Compute "Weekly" Z-Score Using Rolling 5-Day Sampling
+calc_weekly_zscore(_period, _days) =>
+    // How many daily bars we need
+    lookback = _period * _days + _days
+
+    // Store prices
+    var float[] prices = array.new_float()
+
+    // Clear array on each bar
+    array.clear(prices)
+
+    // Sample backward from most recent bar
+    for i = 0 to lookback by _days
+        if not na(close[i])
+            array.push(prices, close[i])
+
+    // Reverse to chronological order (oldest -> newest)
+    array.reverse(prices)
+
+    // Compute returns
+    var float[] returns = array.new_float()
+    array.clear(returns)
+
+    sz = array.size(prices)
+
+    if sz > 1
+        for i = 1 to sz - 1
+            p0 = array.get(prices, i - 1)
+            p1 = array.get(prices, i)
+            ret = (p1 / p0) - 1.0
+            array.push(returns, ret)
+
+    // Keep only last _period returns
+    while array.size(returns) > _period
+        array.shift(returns)
+
+    // Compute mean
+    float mean = 0.0
+    int n = array.size(returns)
+
+    if n > 0
+        for i = 0 to n - 1
+            mean += array.get(returns, i)
+        mean := mean / n
+
+    // Compute standard deviation
+    float variance = 0.0
+
+    if n > 1
+        for i = 0 to n - 1
+            diff = array.get(returns, i) - mean
+            variance += diff * diff
+        variance := variance / (n - 1)
+    std = math.sqrt(variance)
+
+    // Most recent return
+    recent_ret = n > 0 ? array.get(returns, n - 1) : na
+
+    // Z-score
+    z = (std != 0 and not na(recent_ret)) ? (recent_ret - mean) / std : 0.0
     z
 
-// Get Weekly Z-Score
-week_zscore = request.security(syminfo.tickerid, "W", calc_weekly_stats())
+// Compute Z-Score
+week_zscore = calc_weekly_zscore(period_week_zscore, days_per_week)
 
 // Display Summary Table
 var table board = table.new(position.top_right, 2, 4, bgcolor=color.new(color.black, 5), border_width=1)
@@ -86,13 +136,13 @@ if barstate.islast
     table.cell(board, 0, 0, "MMTH", text_color=color.white)
     table.cell(board, 1, 0, str.tostring(mmth, "#.##"), text_color = mmth < 50 ? color.red : color.green)
 
-    // Volatility-Adjusted Momentum (R/σ)
-    table.cell(board, 0, 1, "R/σ", text_color=color.white)
-    table.cell(board, 1, 1, str.tostring(vol_adj_mom, "#.##"), text_color=color.aqua)
+    // Volatility-Adjusted Momentum
+    table.cell(board, 0, 1, "R₂₅₂₋₂₁/σ₆₀", text_color=color.white)
+    table.cell(board, 1, 1, str.tostring(mom, "#.##") + "/" + str.tostring(vol, "#.###") + "=" + str.tostring(vol_adj_mom, "#.##"), text_color=color.aqua)
 
     // Outlier Detection (Weekly Z-Score)
     table.cell(board, 0, 2, "Weekly Z-Score", text_color=color.white)
-    table.cell(board, 1, 2, str.tostring(week_zscore, "#.##") + "σ", text_color = week_zscore > 2.0 ? color.red : color.green)
+    table.cell(board, 1, 2, str.tostring(week_zscore, "#.##") + "σ", text_color = week_zscore > 2.0 or week_zscore < -2.0 ? color.red : color.green)
 
     // Uptrend Check
     table.cell(board, 0, 3, "Uptrend Check", text_color=color.white)
