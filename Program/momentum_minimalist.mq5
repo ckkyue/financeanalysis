@@ -65,65 +65,58 @@ period_week_zscore = input.int(52, "Z-Score Lookback (Weeks)", minval=2, group="
 days_per_week = input.int(5, "Days Per Week", minval=1, group="Weekly Return Z-Score")
 
 // Function: Compute "Weekly" Z-Score Using Rolling 5-Day Sampling
-calc_weekly_zscore(_period, _days) =>
-    // How many daily bars we need
-    lookback = _period * _days + _days
+// Mirrors Python logic: reverse prices, sample every _days, reverse back,
+// compute weekly returns, then z-score = (recent - hist_mean) / hist_std
+calc_weekly_zscore(int _period, int _days) =>
+    // Total daily bars needed: (_period + 1) weekly samples * _days apart
+    int total_samples = _period + 1
+    int max_bar = (total_samples - 1) * _days
 
-    // Store prices
-    var float[] prices = array.new_float()
+    // Sample prices: start from bar 0 (most recent), step by _days (reversed order)
+    float[] sampled = array.new_float()
+    for i = 0 to total_samples - 1
+        int bar_idx = i * _days
+        if bar_idx <= max_bar and not na(close[bar_idx])
+            array.push(sampled, close[bar_idx])
 
-    // Clear array on each bar
-    array.clear(prices)
+    // sampled is in reverse chronological order (newest first), reverse to chronological
+    array.reverse(sampled)
 
-    // Sample backward from most recent bar
-    for i = 0 to lookback by _days
-        if not na(close[i])
-            array.push(prices, close[i])
-
-    // Reverse to chronological order (oldest -> newest)
-    array.reverse(prices)
-
-    // Compute returns
-    var float[] returns = array.new_float()
-    array.clear(returns)
-
-    sz = array.size(prices)
+    // Compute weekly returns from sampled prices
+    float[] wk_rets = array.new_float()
+    int sz = array.size(sampled)
 
     if sz > 1
         for i = 1 to sz - 1
-            p0 = array.get(prices, i - 1)
-            p1 = array.get(prices, i)
-            ret = (p1 / p0) - 1.0
-            array.push(returns, ret)
+            float p0 = array.get(sampled, i - 1)
+            float p1 = array.get(sampled, i)
+            float ret = (p1 / p0) - 1.0
+            array.push(wk_rets, ret)
 
-    // Keep only last _period returns
-    while array.size(returns) > _period
-        array.shift(returns)
+    int n_rets = array.size(wk_rets)
 
-    // Compute mean
-    float mean = 0.0
-    int n = array.size(returns)
+    // Separate historical returns (all but last) and recent return (last)
+    float recent_ret = n_rets > 0 ? array.get(wk_rets, n_rets - 1) : na
+    int n_hist = n_rets - 1
 
-    if n > 0
-        for i = 0 to n - 1
-            mean += array.get(returns, i)
-        mean := mean / n
+    // Compute historical mean
+    float hist_mean = 0.0
+    if n_hist > 0
+        for i = 0 to n_hist - 1
+            hist_mean += array.get(wk_rets, i)
+        hist_mean := hist_mean / n_hist
 
-    // Compute standard deviation
-    float variance = 0.0
+    // Compute historical standard deviation (sample std, ddof=1)
+    float hist_var = 0.0
+    if n_hist > 1
+        for i = 0 to n_hist - 1
+            float diff = array.get(wk_rets, i) - hist_mean
+            hist_var += diff * diff
+        hist_var := hist_var / (n_hist - 1)
+    float hist_std = math.sqrt(hist_var)
 
-    if n > 1
-        for i = 0 to n - 1
-            diff = array.get(returns, i) - mean
-            variance += diff * diff
-        variance := variance / (n - 1)
-    std = math.sqrt(variance)
-
-    // Most recent return
-    recent_ret = n > 0 ? array.get(returns, n - 1) : na
-
-    // Z-score
-    z = (std != 0 and not na(recent_ret)) ? (recent_ret - mean) / std : 0.0
+    // Z-score: (recent_return - hist_mean) / hist_std
+    float z = (hist_std != 0 and not na(recent_ret)) ? (recent_ret - hist_mean) / hist_std : 0.0
     z
 
 // Compute Z-Score

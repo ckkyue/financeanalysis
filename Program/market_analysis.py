@@ -53,8 +53,6 @@ def _get_column_indices(worksheet):
         "Close": "close",
         "Volatility 20 Z-Score": "vol20",
         "Volatility 60 Z-Score": "vol60",
-        "SMA 20": "sma20",
-        "MVP": "mvp",
         "VCP": "vcp",
         "Sector": "sector"
     }
@@ -67,16 +65,6 @@ def _get_column_indices(worksheet):
             col_idx["market_cap"] = i
     
     return col_idx
-
-def _apply_price_formatting(cells, styles):
-    """Apply red font formatting if Close < SMA 20."""
-    stock_cell, close_cell, sma20_cell = cells
-    try:
-        if (close_cell.value is not None and sma20_cell.value is not None and 
-            float(close_cell.value) < float(sma20_cell.value)):
-            stock_cell.font = styles["red_font"]
-    except (ValueError, TypeError):
-        pass
 
 def _apply_beta_formatting(beta_cell, styles):
     """Apply red font formatting for high beta values."""
@@ -107,14 +95,6 @@ def _apply_sector_formatting(sector_cell, sector_classifications, styles):
         sector_cell.fill = styles["yellow_fill"]
     elif sector_val in lagging or sector_val in weakening:
         sector_cell.fill = styles["red_fill"]
-
-def _apply_special_formatting(mvp_cell, vcp_cell, styles):
-    """Apply MVP and VCP specific formatting."""
-    if mvp_cell.value == "MVP":
-        mvp_cell.font = styles["green_font"]
-    
-    if vcp_cell.value is True:
-        vcp_cell.fill = styles["orange_fill"]
 
 def _apply_market_cap_border(stock_cell, market_cap_cell, styles, red_border_applied):
     """Apply red top border for first stock with market cap < 10B."""
@@ -173,10 +153,6 @@ def screen_excel(excel_filename, sector_excel_classification):
         cells = {key: row[idx] for key, idx in col_idx.items()}
         
         # Apply various formatting rules
-        _apply_price_formatting(
-            (cells["stock"], cells["close"], cells["sma20"]), styles
-        )
-
         _apply_beta_formatting(cells["beta"], styles)
 
         _apply_volatility_formatting(
@@ -189,8 +165,6 @@ def screen_excel(excel_filename, sector_excel_classification):
              sector_sets["Weakening"], sector_sets["Lagging"]),
             styles
         )
-
-        _apply_special_formatting(cells["mvp"], cells["vcp"], styles)
         
         red_border_applied = _apply_market_cap_border(
             cells["stock"], cells.get("market_cap"), styles, red_border_applied
@@ -221,6 +195,7 @@ def main():
     
     # Modify the current date
     current_date = modify_current_date(start, index_name)
+    current_date = "2026-02-14"
 
     # US Sectors
     us_sectors = ["XLC", "XLY", "XLP", "XLE", "XLF", "XLV", 
@@ -270,7 +245,7 @@ def main():
     hsi_df = get_df("^HSI", current_date)
 
     # Plot all tickers (indices, US and HK sectors)
-    plot_all = dt.datetime.now().weekday() == 5 or 6  # Plot all on weekends
+    plot_all = False
     if plot_all:
         for ticker in index_names + us_sectors + hk_sectors:
             df = get_df(ticker, current_date)
