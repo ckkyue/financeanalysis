@@ -711,8 +711,8 @@ def main():
     index_name = "^GSPC"
     index_dict = {"^HSI": "HSI", "^GSPC": "S&P 500", "^IXIC": "NASDAQ Composite"}
 
-    # Create the end dates
-    end_dates = generate_end_dates(end_date="2024-12-20", years=7, interval="1w")
+    # # Create the end dates
+    # end_dates = generate_end_dates(end_date="2024-12-20", years=7, interval="1w")
 
     # Stock selection for different combinations of index names and stock selection
     all_stocks_options = [True, False]
