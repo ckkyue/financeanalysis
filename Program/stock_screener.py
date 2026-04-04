@@ -723,6 +723,7 @@ def main():
 
         # Get the current date
         current_date = modify_current_date(start, index_name)
+        current_date = "2026-04-03"
         end_dates = current_date
         select_stocks(end_dates, current_date, index_name, index_dict, 
                       period_short, period_long, RS, all_stock_option, factors, backtest)
