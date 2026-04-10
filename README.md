@@ -1,41 +1,51 @@
-# StockAnalysis
-This repository contains Python scripts designed to identify potential high-growth stocks. The screener allows you to select stocks listed on the following exchanges:
-- **Hong Kong Exchanges and Clearing Limited (HKEX)**
-- **National Association of Securities Dealers Automated Quotations (NASDAQ)**
+# FinanceAnalysis
 
-You can clone this repository using the following command:
+This repository contains Python scripts for identifying potential high-growth stocks across major exchanges.
+
+## Supported Exchanges
+
+- **HKEX** (Hong Kong Exchanges and Clearing Limited)
+- **NASDAQ** (National Association of Securities Dealers Automated Quotations)
+
+## Getting Started
+
+Clone the repository:
+
 ```bash
-git clone --depth 1 https://github.com/ckkyue/StockAnalysis.git
+git clone --depth 1 https://github.com/ckkyue/FinanceAnalysis.git
 ```
-The `--depth 1` flag is recommended to avoid using up space with unnecessary commits.
 
-## Libraries
-Ensure that you have the following libraries installed:
+> **Note:** The `--depth 1` flag reduces disk usage by excluding commit history.
 
-- `matplotlib`
-- `numpy`
-- `openpyxl`
-- `pandas`
-- `requests`
-- `python-dateutil`
-- `pyfinviz`
-- `requests-ratelimiter`
-- `scipy`
-- `scikit-learn`
-- `statsmodels`
-- `tqdm`
-- `seaborn`
-- `yfinance`
+## Requirements
 
-You can install all the required libraries by running:
+Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-Occasionally, yfinance may encounter bugs, so it is important to keep it updated regularly to avoid potential errors. You can do this by running:
-```bash
-pip install --upgrade yfinance
-```
+**Required libraries:**
+- matplotlib
+- numpy
+- openpyxl
+- pandas
+- requests
+- python-dateutil
+- pyfinviz
+- requests-ratelimiter
+- scipy
+- scikit-learn
+- statsmodels
+- tqdm
+- seaborn
+- yfinance
+
+> **Important:** Keep `yfinance` updated regularly to avoid bugs:
+> ```bash
+> pip install --upgrade yfinance
+> ```
 
 ## Disclaimer
-The content of this repository does not constitute investment advice, offer any solicitation to offer, or recommend any investment product.
+
+This repository does not constitute investment advice or recommend any investment product.
