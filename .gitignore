@@ -1,6 +1,5 @@
 # OS
 .DS_Store
-**/.DS_Store
 Thumbs.db
 
 # Python
@@ -24,10 +23,10 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+*-checkpoint.ipynb
 .jupyter/
-*.nbconvert/
 
-# Logs and temp files
+# Logs & Temporary Files
 *.log
 *.tmp
 pip-log.txt
@@ -36,13 +35,13 @@ pip-delete-this-directory.txt
 # IDE
 .vscode/
 .idea/
+*.code-workspace
 *.swp
 *.swo
 
-# Configuration secrets
+# Secrets
 .env
 .env.local
-*.env
 
 # Media
 *.png
@@ -50,7 +49,7 @@ pip-delete-this-directory.txt
 *.jpeg
 *.gif
 
-# Data exports
+# Data
 Fundamentals/*.csv
 Price\ data/*.csv
 *.json
