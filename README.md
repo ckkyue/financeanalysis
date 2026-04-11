@@ -40,11 +40,11 @@ If you see issues with market data downloads, update `yfinance`:
 ```bash
 pip install --upgrade yfinance
 ```
-
 ## Dependencies
 
 The project uses:
 
+- arch
 - matplotlib
 - numpy
 - openpyxl
@@ -58,6 +58,8 @@ The project uses:
 - seaborn
 - statsmodels
 - tqdm
+- tvDatafeed
+- xlrd
 - yfinance
 
 ## Typical Workflow

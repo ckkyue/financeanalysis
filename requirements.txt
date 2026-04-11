@@ -1,3 +1,4 @@
+arch
 matplotlib
 numpy
 openpyxl
@@ -10,5 +11,7 @@ scipy
 scikit-learn
 statsmodels
 tqdm
+tvDatafeed
 seaborn
+xlrd
 yfinance
